@@ -200,8 +200,9 @@ class LinkAI:
         return response
 
     def prompt_from_settings(self, settings: dict) -> str:
-        size = self.SIZE[settings["size"]]
-        return f"Пиши в стиле:{settings['style']}, в тоне: {settings['tone']}, около {settings['size']} слов"
+        size = self.SIZE[settings["set_size"]]
+        print(f"Пиши в стиле:{settings['set_stile_type']}, в тоне: {settings['tone']}, около {size} слов")
+        return f"Пиши в стиле:{settings['set_stile_type']}, в тоне: {settings['tone']}, около {size} слов"
 
 
 if __name__ == "__main__":

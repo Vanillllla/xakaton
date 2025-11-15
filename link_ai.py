@@ -215,7 +215,7 @@ class LinkAI:
             project=self.CLOUD_FOLDER
         )
         messages = [{"role": "system", "content": answers['system']}]
-        for i in range(1, len(questions) + 1):
+        for i in range(1, len(answers) + 1):
             messages.append({"role": "assistant", "content": questions[str(i)]["text"]})
             messages.append({"role": "user", "content": answers[str(i)]})
         response = client.responses.create(

@@ -2,6 +2,7 @@ import openai
 from dotenv import load_dotenv
 from yandex_cloud_ml_sdk import YCloudML
 import os
+import json
 
 
 class LinkAI:
@@ -10,6 +11,7 @@ class LinkAI:
     API_KEY = os.getenv('API_KEY')
     CLOUD_FOLDER = os.getenv('CLOUD_FOLDER')
     SIZE = {1: '100', 2: '250', 3: '500'}
+    SETTINGS = json.load(open('settings.json'))['settings']
 
     def single_prompt(self, prompt):
         '''
@@ -97,7 +99,7 @@ class LinkAI:
 
         return response
 
-    def draw(self, prompt):
+    async def draw(self, prompt):
         '''
         Делает картинки
         :param prompt:
@@ -200,9 +202,10 @@ class LinkAI:
         return response
 
     def prompt_from_settings(self, settings: dict) -> str:
-        size = self.SIZE[settings["set_size"]]
-        print(f"Пиши в стиле:{settings['set_stile_type']}, в тоне: {settings['tone']}, около {size} слов")
-        return f"Пиши в стиле:{settings['set_stile_type']}, в тоне: {settings['tone']}, около {size} слов"
+        style = self.SETTINGS['style_type'][str(settings['set_style_type'])]
+        tone = self.SETTINGS['tone'][str(settings['set_tone'])]
+        size = self.SETTINGS['size'][str(settings['set_size'])]
+        return f"Пиши в стиле:{style}, в тоне: {tone}, около {size} слов. Не уточняй по поводу вышеперечисленных пунктов и сконцентрируйся на вводе пользователя."
 
 
 if __name__ == "__main__":
@@ -210,5 +213,5 @@ if __name__ == "__main__":
     # ai.draw("Чёрный кот с большими красными глазами")
     # resp = ai.single_prompt(
     #    "Сделай промпт для тебя для создания контент планов для соцсетей НКО на заданный пользователем промежуток времени, частоту, регулярность, учитывая знания об этой НКО.")
-    resp = ai.create_system_prompt("НКО занимается помощью людям без определенного места жительства. Называется 'Ночлежка', работает в Москве")
-    print(resp.id)
+    # resp = ai.create_system_prompt("НКО занимается помощью людям без определенного места жительства. Называется 'Ночлежка', работает в Москве")
+    # print(resp.id)

@@ -216,13 +216,12 @@ class TextBot:
         data["prompt"] = message.text
 
         # Вставить пользовательскую функцию обработки здесь
-
-        result = await self.ai.prompt_with_system_context(message.text,
-                                                          self.ai.prompt_from_settings(
-                                                              self.db.get_user_settings(message.from_user.id)))
+        settings = self.db.get_user_settings(message.from_user.id)
+        system_prompt = self.ai.prompt_from_settings(settings)
+        result = self.ai.prompt_with_system_context(message.text, system_prompt)
 
         await state.clear()
-        await message.answer(result.text)
+        await message.answer(result.output_text)
         await self.mane_menu(message)
 
     async def run(self):

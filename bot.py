@@ -1,17 +1,15 @@
 import asyncio
 import json
 import os
-from idlelib.window import add_windows_to_menu
 from math import pi
 
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, user, CallbackQuery
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from dotenv import load_dotenv
-from pyexpat.errors import messages
 
 from database import Database
 from link_ai import LinkAI
@@ -323,10 +321,10 @@ class TextBot:
         for_you  --> ТВОЙ КОД --> result
          (str)                    (str)(jpeg_addres)  
         """
-        result = "/pictures/picture.jpg" # Эту строчку замени
+        result = "pictures/picture.jpg" # Эту строчку замени
 
         await state.clear()
-        await message.answer_photo(result)
+        await message.answer_photo(FSInputFile(result))
         await self.mane_menu(message, state)
         return
 
@@ -343,7 +341,7 @@ class TextBot:
         result = str("Text") # Эту строчку замени
 
         await state.clear()
-        await message.answer(result) # Дописать к result.output_text
+        await message.answer(result) # Дописать к result.output_text если надо
         await self.mane_menu(message, state)
         return
 

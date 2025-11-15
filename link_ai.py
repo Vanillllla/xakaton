@@ -9,6 +9,7 @@ class LinkAI:
     MODEL = os.getenv('MODEL')
     API_KEY = os.getenv('API_KEY')
     CLOUD_FOLDER = os.getenv('CLOUD_FOLDER')
+    SIZE = {1: '100', 2: '250', 3: '500'}
 
     def single_prompt(self, prompt):
         '''
@@ -52,7 +53,7 @@ class LinkAI:
 
         return response
 
-    def single_prompt_with_system_context(self, prompt, context):
+    def prompt_with_system_context(self, prompt, context):
         '''
         Промпт и знание об НКО
         :param prompt:
@@ -198,6 +199,10 @@ class LinkAI:
 
         return response
 
+    def prompt_from_settings(self, settings: dict) -> str:
+        size = self.SIZE[settings["size"]]
+        return f"Пиши в стиле:{settings['style']}, в тоне: {settings['tone']}, около {settings['size']} слов"
+
 
 if __name__ == "__main__":
     ai = LinkAI()
@@ -205,4 +210,4 @@ if __name__ == "__main__":
     # resp = ai.single_prompt(
     #    "Сделай промпт для тебя для создания контент планов для соцсетей НКО на заданный пользователем промежуток времени, частоту, регулярность, учитывая знания об этой НКО.")
     resp = ai.create_system_prompt("НКО занимается помощью людям без определенного места жительства. Называется 'Ночлежка', работает в Москве")
-    print(resp.output_text)
+    print(resp.id)

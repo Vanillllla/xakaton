@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from database import Database
 from link_ai import LinkAI
 
+
 class TextBot:
     """Класс бота для генерации текста с настройками"""
 
@@ -60,20 +61,14 @@ class TextBot:
     )
 
     keyboard_sizes = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [InlineKeyboardButton(
-            text=style_name,
-            callback_data=f"style_{style_key}"  # уникальный идентификатор
-        )]
-        for style_key, style_name in TEXT_STYLES.items()
-    ]
-)
-
-
-
-
-
-
+        inline_keyboard=[
+            [InlineKeyboardButton(
+                text=style_name,
+                callback_data=f"style_{style_key}"  # уникальный идентификатор
+            )]
+            for style_key, style_name in TEXT_STYLES.items()
+        ]
+    )
 
     class PromptStates(StatesGroup):
         """Состояния для FSM"""
@@ -124,16 +119,13 @@ class TextBot:
         self.dp.message.register(self.process_prompt, self.PromptStates.waiting_for_prompt)
         self.dp.message.register(self.texst_input, self.PromptStates.waiting_for_text_input)
 
-
         self.dp.message.register(self.handle_solo_quest, F.text == "Одиночный запрос")
         self.dp.message.register(self.handle_question_quest, F.text == "Запрос с уточнениями")
         self.dp.message.register(self.handle_multi_quest, F.text == "Мульти чат")
         self.dp.message.register(self.handle_settings, F.text == "Настройки")
         self.dp.message.register(self.mane_menu, self.MainMenu.mane_state)
 
-        self.dp.message.register(self.mane_menu , F.text == "В меню")
-
-
+        self.dp.message.register(self.mane_menu, F.text == "В меню")
 
     async def test(self, message: types.Message):
         pass
@@ -193,7 +185,7 @@ class TextBot:
         # Здесь ваша логика для одиночного запроса
         # Например, установка состояния или вызов другой функции
 
-    async def handle_question_quest(self, message: types.Message, state: FSMContext ):
+    async def handle_question_quest(self, message: types.Message, state: FSMContext):
         """Обработчик кнопки 'Запрос с уточнениями'"""
         await state.clear()
         await message.answer("Выбран режим: Запрос с уточнениями")
@@ -201,15 +193,6 @@ class TextBot:
         await message.answer("Теперь введите ваш промт:")
         await state.update_data()
         await state.set_state(self.PromptStates.waiting_for_text_input)
-
-
-
-
-
-
-
-
-
 
         # Здесь ваша логика для запроса с уточнениями
 
@@ -234,13 +217,12 @@ class TextBot:
 
         # Вставить пользовательскую функцию обработки здесь
 
-
-        result = await self.ai.your_func(data.items().mapping, self.db.get_user_settings(message.from_user.id))
-        # --------------------------------/\/\/\/\/\/\/\/\/\-----------/\/\/\/\/\/\/\----------------
-        # ---------------------------------------dict---------------------dict-----------------------
+        result = await self.ai.prompt_with_system_context(message.text,
+                                                          self.ai.prompt_from_settings(
+                                                              self.db.get_user_settings(message.from_user.id)))
 
         await state.clear()
-        await message.answer(result)
+        await message.answer(result.text)
         await self.mane_menu(message)
 
     async def run(self):

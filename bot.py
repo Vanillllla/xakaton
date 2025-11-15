@@ -249,7 +249,7 @@ class TextBot:
         quests = quests_0['questions']
 
         if data["finish"] == 1 or data["quest"] == 4:
-            resp = self.ai.dialogue(data["quest_data"]) #.output_text
+            resp = self.ai.dialogue(data["quest_data"]).output_text
             await message.answer(resp)
             await state.clear()
             await self.mane_menu(message, state)

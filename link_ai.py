@@ -139,7 +139,7 @@ class LinkAI:
 
     def content_plan(self, prompt):
         '''
-
+        Контент план
         :param prompt:
         :return:
         '''
@@ -174,7 +174,7 @@ class LinkAI:
 
     def create_system_prompt(self, prompt):
         '''
-                Исправление ошибок
+                Функция для собирания информации об организации в системный промт
                 :param prompt:
                 :return:
                 '''

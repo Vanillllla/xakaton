@@ -12,6 +12,8 @@ from dotenv import load_dotenv
 from database import Database
 
 
+from link_ai import LinkAI
+
 class TextBot:
     """Класс бота для генерации текста с настройками"""
 

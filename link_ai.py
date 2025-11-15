@@ -12,6 +12,7 @@ class LinkAI:
     CLOUD_FOLDER = os.getenv('CLOUD_FOLDER')
     SIZE = {1: '100', 2: '250', 3: '500'}
     SETTINGS = json.load(open('settings.json'))['settings']
+    QUESTIONS = json.load(open('settings.json'))['questions']
 
     def single_prompt(self, prompt):
         '''
@@ -208,17 +209,15 @@ class LinkAI:
         return f"Пиши в стиле:{style}, в тоне: {tone}, около {size} слов. Не уточняй по поводу вышеперечисленных пунктов и сконцентрируйся на вводе пользователя."
 
     def dialogue(self, answers: dict):
-        questions = self.SETTINGS["questions"]
         client = openai.OpenAI(
             api_key=self.API_KEY,
             base_url="https://rest-assistant.api.cloud.yandex.net/v1",
             project=self.CLOUD_FOLDER
         )
-        messages = [{"role": "system", "content": answers['system']}]
-        for key, value in answers:
-            if key != "system":
-                messages.append({"role": "assistant", "content": questions[key]["text"]})
-                messages.append({"role": "user", "content": value})
+        messages = [{"role": "system", "content": "Ты опытный SMM специалист, ты помогаешь НКО сделать пост в их социальных сетях. Для получения информации ты сначала проводишь опрос, потом предлагешь текст поста. Ответы уже получены"}]
+        for key, value in answers.items():
+            messages.append({"role": "assistant", "content": self.QUESTIONS[key]["text"]})
+            messages.append({"role": "user", "content": value})
         response = client.responses.create(
             model=f"gpt://{self.CLOUD_FOLDER}/{self.MODEL}",
             input=messages,

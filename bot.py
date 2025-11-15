@@ -217,10 +217,8 @@ class TextBot:
         await message.answer(quests[str(data["quest"])]["text"], reply_markup=self.keyboard_quest)
 
         if data["finish"] == 1 or data["quest"] == 4:
-            settings = self.db.get_user_settings(message.from_user.id)
-            data["quest_data"]["system"] = self.ai.prompt_from_settings(settings)
             resp = self.ai.dialogue(data["quest_data"]).output_text
-            await message.answer(resp + "\n\n!!!ЕГОР ЕБЛАН!!!!")
+            await message.answer(resp)
             await state.clear()
             await self.mane_menu(message)
 

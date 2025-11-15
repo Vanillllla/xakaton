@@ -214,17 +214,17 @@ class LinkAI:
             base_url="https://rest-assistant.api.cloud.yandex.net/v1",
             project=self.CLOUD_FOLDER
         )
-        messages = [{"role": "system", "content": "Ты опытный SMM специалист, ты помогаешь НКО сделать пост в их социальных сетях. Для получения информации ты сначала проводишь опрос, потом предлагешь текст поста. Ответы уже получены"}]
+        messages = [{"role": "system", "content": "Ты опытный SMM специалист, ты помогаешь НКО сделать пост в их социальных сетях. Для получения информации ты сначала проводишь опрос, потом предлагешь текст поста. Ответы уже получены. Старайся не ссылаться на примеры в заданных тобой вопросах"}]
         for key, value in answers.items():
             messages.append({"role": "assistant", "content": self.QUESTIONS[key]["text"]})
             messages.append({"role": "user", "content": value})
-        response = client.responses.create(
+        """response = client.responses.create(
             model=f"gpt://{self.CLOUD_FOLDER}/{self.MODEL}",
             input=messages,
             temperature=0.8
-        )
+        )"""
 
-        return response
+        return 'text'
 
 
 if __name__ == "__main__":

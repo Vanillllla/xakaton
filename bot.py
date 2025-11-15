@@ -5,10 +5,10 @@ from idlelib.window import add_windows_to_menu
 from math import pi
 
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, user
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, user, CallbackQuery
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from dotenv import load_dotenv
 from database import Database
@@ -17,6 +17,13 @@ from link_ai import LinkAI
 
 class TextBot:
     """Класс бота для генерации текста с настройками"""
+
+    keyboard_quest = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="⬅️", callback_data="back"), InlineKeyboardButton(text="➡️", callback_data="next")],
+            [InlineKeyboardButton(text="🏠В меню", callback_data="menu"), InlineKeyboardButton(text="✅ Отправить", callback_data="finish")],
+        ]
+    )
 
     keyboard_yes_no = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -32,7 +39,7 @@ class TextBot:
             [KeyboardButton(text="Мульти чат"), KeyboardButton(text="Настройки")],
         ],
         resize_keyboard=True,  # Подгонка под размер
-        one_time_keyboard=False  # Скрыть после нажатия
+        one_time_keyboard=True  # Скрыть после нажатия
     )
 
     keyboard_settings = ReplyKeyboardMarkup(
@@ -66,8 +73,7 @@ class TextBot:
 
     class QuestState(StatesGroup):
         to_quest = State()
-        to_3 = State()
-        to_4 = State()
+        to_text_answer = State()
 
     def __init__(self):
         """Инициализация бота и БД"""
@@ -106,7 +112,10 @@ class TextBot:
         # Обработчики состояний
         self.dp.message.register(self.process_prompt, self.PromptStates.waiting_for_prompt)
 
-        self.dp.message.register(self.ques_2, self.QuestState.to_quest)
+        # Обработчики для вопросов
+        self.dp.message.register(self.handle_quest_text, self.QuestState.to_text_answer)
+        self.dp.message.register(self.handle_question_quest, self.QuestState.to_quest)
+        self.dp.callback_query.register(self.handle_quest_callback,StateFilter(self.QuestState.to_quest))
 
         self.dp.message.register(self.handle_solo_quest, F.text == "Одиночный запрос")
         self.dp.message.register(self.handle_question_quest, F.text == "Запрос с уточнениями")
@@ -188,54 +197,61 @@ class TextBot:
         await self.mane_menu(message)
 
 
-    async def handle_question_quest(self, message: types.Message, state: FSMContext):
-        """Обработчик кнопки 'Запрос с уточнениями'"""
+    async def handle_question_quest(self, message : types.Message, state: FSMContext):
         data = await state.get_data()
+
         if "quest" not in data:
             await state.clear()
             await message.answer("Выбран режим: Запрос с уточнениями")
             await state.update_data(quest=1)
+            data["quest"] = 1
+            await state.update_data(finish=0)
+            data["finish"] = 0
+        print(data)
 
+        with open('settings.json', 'r', encoding='utf-8') as file:
+            quests_0 = json.load(file)
+        quests = quests_0['questions']
 
-        with open('data.json', 'r', encoding='utf-8') as file:
-            quests = json.load(file)
-        selected_dict = quests['users']
+        await message.answer(quests[str(data["quest"])]["text"], reply_markup=self.keyboard_quest)
+
         if data["finish"] == 1:
             '''
-            Запрос к нейронке
+            Словарь --> Запрос к нейронке --> return text 
             '''
             await state.clear()
 
-        await state.set_state(self.QuestState.to_quest)
 
-    async def quest_num(self, message: types.Message, state: FSMContext):
 
-        await state.set_state(self.PromptStates.fff)
+        await state.set_state(self.QuestState.to_text_answer)
 
-    async def ques_2(self, message: types.Message, state: FSMContext):
 
-        await state.set_state(self.QuestState.to_3)
 
-    async def ques_3(self, message: types.Message, state: FSMContext):
+    async def handle_quest_callback(self, callback: CallbackQuery, state: FSMContext):
+        data = await state.get_data()
 
-        await state.set_state(self.QuestState.to_4)
+        # Обработка нажатия кнопки
+        # await callback_query.message.edit_text("Переход выполнен!"
 
-    async def ques_4(self, message: types.Message, state: FSMContext):
+        if callback.data == "next":
 
-        await state.set_state(self.QuestState.to_5)
+            print("Next quest")
+            await state.update_data(quest=data["quest"]+1)
 
-    async def ques_5(self, message: types.Message, state: FSMContext):
 
-        await state.set_state(self.QuestState.to_6)
+        await callback.answer()
+        await self.handle_question_quest(callback.message, state)
 
-    async def ques_6(self, message: types.Message, state: FSMContext):
+    async def handle_quest_text(self, message: types.Message, state: FSMContext):
+        data = await state.get_data()
 
-        await state.set_state(self.QuestState.to_7)
+        print("Типа сохранилось:", message.text)
 
-    async def ques_7(self, message: types.Message, state: FSMContext):
+        await state.update_data(quest=data["quest"] + 1)
 
-        await state.set_state(self.QuestState.to_8)
+        await state.update_data(quest=data["quest"] + 1)
 
+        await self.handle_question_quest(message, state)
 
     async def handle_multi_quest(self, message: types.Message):
         """Обработчик кнопки 'Мульти чат'"""

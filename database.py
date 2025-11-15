@@ -85,3 +85,15 @@ class Database:
                     settings[key] = value
 
             return settings
+    def organization_info_reload(self, user_id: int, new_info: str ):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                            UPDATE organizations 
+                            SET organization_info_data = %s 
+                            WHERE id = (
+                                SELECT organization 
+                                FROM users
+                                WHERE user_id = %s)
+                            """,(new_info, user_id))
+            conn.commit()

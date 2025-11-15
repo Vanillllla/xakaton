@@ -216,15 +216,6 @@ class TextBot:
         # Например, показать клавиатуру с настройками
 
 
-        # Вставить пользовательскую функцию обработки здесь
-        settings = self.db.get_user_settings(message.from_user.id)
-        system_prompt = self.ai.prompt_from_settings(settings)
-        result = self.ai.prompt_with_system_context(message.text, system_prompt)
-
-        await state.clear()
-        await message.answer(result.output_text)
-        await self.mane_menu(message)
-
     async def run(self):
         """Запуск бота"""
         # Уведомляем администраторов о запуске

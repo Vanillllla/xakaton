@@ -63,3 +63,25 @@ class Database:
             cursor.execute("SELECT user_id FROM users WHERE is_admin = TRUE")
             admins = cursor.fetchall()
             return [admin[0] for admin in admins] if admins else []
+
+    def get_user_settings(self, user_id: int) -> dict:
+        """Получить настройки пользователя (столбцы, начинающиеся на 'set')"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                           SELECT *
+                           FROM users
+                           WHERE user_id = %s
+                           """, (user_id,))
+            user_data = cursor.fetchone()
+
+            if not user_data:
+                return {}
+
+            # Фильтруем только столбцы, начинающиеся с "set"
+            settings = {}
+            for key, value in user_data.items():
+                if key.startswith('set'):
+                    settings[key] = value
+
+            return settings

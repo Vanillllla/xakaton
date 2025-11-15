@@ -6,12 +6,10 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, user
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from dotenv import load_dotenv
 from database import Database
-
-
 from link_ai import LinkAI
 
 class TextBot:
@@ -35,6 +33,14 @@ class TextBot:
         "friendly": "Дружелюбный",
         "professional": "Профессиональный"
     }
+
+    keyboard_yes_no = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Да", callback_data="yes")],
+            [InlineKeyboardButton(text="Нет", callback_data="no")],
+            [InlineKeyboardButton(text="Наверное", callback_data="WTF??!")],
+        ]
+    )
 
     keyboard_main = ReplyKeyboardMarkup(
         keyboard=[
@@ -71,10 +77,8 @@ class TextBot:
 
     class PromptStates(StatesGroup):
         """Состояния для FSM"""
-        waiting_for_size = State()
-        waiting_for_style = State()
-        waiting_for_tone = State()
         waiting_for_prompt = State()
+        waiting_for_text_input = State()
 
     class MainMenu(StatesGroup):
         mane_state = State()
@@ -100,6 +104,8 @@ class TextBot:
             "database": os.getenv('DB_NAME')
         }
 
+        self.ai = LinkAI()
+
         self.db = Database(DB_CONFIG)
         # self.db.create_users_table()
 
@@ -116,6 +122,7 @@ class TextBot:
 
         # Обработчики состояний
         self.dp.message.register(self.process_prompt, self.PromptStates.waiting_for_prompt)
+        self.dp.message.register(self.texst_input, self.PromptStates.waiting_for_text_input)
 
 
         self.dp.message.register(self.handle_solo_quest, F.text == "Одиночный запрос")
@@ -179,15 +186,23 @@ class TextBot:
 
     async def handle_solo_quest(self, message: types.Message, state: FSMContext):
         """Обработчик кнопки 'Одиночный запрос'"""
+        await state.clear()
         await message.answer("Выбран режим: Одиночный запрос")
         await message.answer("Теперь введите ваш промт:", reply_markup=types.ReplyKeyboardRemove())
         await state.set_state(self.PromptStates.waiting_for_prompt)
         # Здесь ваша логика для одиночного запроса
         # Например, установка состояния или вызов другой функции
 
-    async def handle_question_quest(self, message: types.Message):
+    async def handle_question_quest(self, message: types.Message, state: FSMContext ):
         """Обработчик кнопки 'Запрос с уточнениями'"""
+        await state.clear()
         await message.answer("Выбран режим: Запрос с уточнениями")
+        # await message.answer("Хотите подключить системные данные?", reply_markup=self.keyboard_yes_no)
+        await message.answer("Теперь введите ваш промт:")
+        await state.update_data()
+        await state.set_state(self.PromptStates.waiting_for_text_input)
+
+
 
 
 
@@ -209,41 +224,24 @@ class TextBot:
         # Здесь ваша логика для настроек
         # Например, показать клавиатуру с настройками
 
-
-
-
-
-
-
-
-
-
+    async def texst_input(self, message: types.Message, state: FSMContext):
+        pass
 
     async def process_prompt(self, message: types.Message, state: FSMContext):
         """Обработка промта"""
-        user_data = await state.get_data()
-        user_data["prompt"] = message.text
+        data = await state.get_data()
+        data["prompt"] = message.text
 
         # Вставить пользовательскую функцию обработки здесь
-        result = await self.process_user_request(user_data)
+
+
+        result = await self.ai.your_func(data.items().mapping, self.db.get_user_settings(message.from_user.id))
+        # --------------------------------/\/\/\/\/\/\/\/\/\-----------/\/\/\/\/\/\/\----------------
+        # ---------------------------------------dict---------------------dict-----------------------
 
         await state.clear()
         await message.answer(result)
         await self.mane_menu(message)
-
-    async def process_user_request(self, data: dict) -> str:
-        """Пользовательская функция обработки (заменить на свою)"""
-        result = "Данные : \n"
-        for key, value in data.items():
-            result += f"{key}: {value}, \n"  # Добавляем пару с разделителем
-
-        # Убираем лишнюю запятую и пробел в конце строки
-        result = result.rstrip(", \n")
-
-        print(result)
-
-        return result
-
 
     async def run(self):
         """Запуск бота"""

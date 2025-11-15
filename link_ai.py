@@ -221,8 +221,7 @@ class LinkAI:
         response = client.responses.create(
             model=f"gpt://{self.CLOUD_FOLDER}/{self.MODEL}",
             input=messages,
-            temperature=0.8,
-            max_output_tokens=1500
+            temperature=0.8
         )
 
         return response

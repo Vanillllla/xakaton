@@ -207,11 +207,31 @@ class LinkAI:
         size = self.SETTINGS['size'][str(settings['set_size'])]
         return f"Пиши в стиле:{style}, в тоне: {tone}, около {size} слов. Не уточняй по поводу вышеперечисленных пунктов и сконцентрируйся на вводе пользователя."
 
+    def dialogue(self, answers: dict):
+        questions = self.SETTINGS["questions"]
+        client = openai.OpenAI(
+            api_key=self.API_KEY,
+            base_url="https://rest-assistant.api.cloud.yandex.net/v1",
+            project=self.CLOUD_FOLDER
+        )
+        messages = [{"role": "system", "content": answers['system']}]
+        for i in range(1, len(questions) + 1):
+            messages.append({"role": "assistant", "content": questions[str(i)]["text"]})
+            messages.append({"role": "user", "content": answers[str(i)]})
+        response = client.responses.create(
+            model=f"gpt://{self.CLOUD_FOLDER}/{self.MODEL}",
+            input=messages,
+            temperature=0.8,
+            max_output_tokens=1500
+        )
+
+        return response
+
 
 if __name__ == "__main__":
     ai = LinkAI()
     # ai.draw("Чёрный кот с большими красными глазами")
-    # resp = ai.single_prompt(
-    #    "Сделай промпт для тебя для создания контент планов для соцсетей НКО на заданный пользователем промежуток времени, частоту, регулярность, учитывая знания об этой НКО.")
+    resp = ai.single_prompt(
+        "Ты делаешь ИИ чат бота для помощи НКО в создании контента для соцсетей. Придумай список уточняющих вопросов, на которые должен ответить человек, чтобы бот смог сделать пост наиболее релевантым и живым")
     # resp = ai.create_system_prompt("НКО занимается помощью людям без определенного места жительства. Называется 'Ночлежка', работает в Москве")
-    # print(resp.id)
+    print(resp.output_text)

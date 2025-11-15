@@ -215,9 +215,10 @@ class LinkAI:
             project=self.CLOUD_FOLDER
         )
         messages = [{"role": "system", "content": answers['system']}]
-        for i in range(1, len(answers) + 1):
-            messages.append({"role": "assistant", "content": questions[str(i)]["text"]})
-            messages.append({"role": "user", "content": answers[str(i)]})
+        for key, value in answers:
+            if key != "system":
+                messages.append({"role": "assistant", "content": questions[key]["text"]})
+                messages.append({"role": "user", "content": value})
         response = client.responses.create(
             model=f"gpt://{self.CLOUD_FOLDER}/{self.MODEL}",
             input=messages,

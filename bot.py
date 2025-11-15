@@ -37,7 +37,7 @@ class TextBot:
     # KeyboardButton(text="Мульти чат")
     keyboard_main = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="📝 Одиночный запрос"), KeyboardButton(text="🗂️ Доп. функции")],
+            [KeyboardButton(text="📝 Разовый запрос"), KeyboardButton(text="🗂️ Доп. функции")],
             [KeyboardButton(text="❓ Запрос с уточнениями"), KeyboardButton(text="🛠️ Настройки генерации")],
         ],
         resize_keyboard=True,  # Подгонка под размер
@@ -46,7 +46,7 @@ class TextBot:
 
     keyboard_dop_main = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Генерация изображения"), KeyboardButton(text="Мульти-чат")],
+            [KeyboardButton(text="🏞️ Генерация изображения"), KeyboardButton(text="Мульти-чат")],
             [KeyboardButton(text="📅 Генерация контент плана"), KeyboardButton(text="🔙 Назад")],
         ],
         resize_keyboard=True,  # Подгонка под размер
@@ -83,7 +83,8 @@ class TextBot:
     class PromptStates(StatesGroup):
         """Состояния для FSM"""
         waiting_for_prompt = State()
-        waiting_for_text_input = State()
+        waiting_for_picture_prompt = State()
+        waiting_for_content_plane_prompt = State()
 
     class MainMenu(StatesGroup):
         mane_state = State()
@@ -129,6 +130,8 @@ class TextBot:
 
         # Обработчики состояний
         self.dp.message.register(self.process_prompt, self.PromptStates.waiting_for_prompt)
+        self.dp.message.register(self.picture_generator, self.PromptStates.waiting_for_picture_prompt)
+        self.dp.message.register(self.content_plane_generator, self.PromptStates.waiting_for_content_plane_prompt)
 
         # Обработчики для вопросов
         self.dp.message.register(self.handle_quest_text, self.QuestState.to_text_answer)
@@ -136,6 +139,8 @@ class TextBot:
 
         self.dp.message.register(self.menu_handler, self.MainMenu.menu_handler)
         self.dp.message.register(self.mane_menu, self.MainMenu.mane_state)
+
+
 
 
         self.dp.message.register(self.mane_menu, F.text == "В меню")
@@ -165,6 +170,12 @@ class TextBot:
         elif text == "❓ Запрос с уточнениями":
             await state.clear()
             await self.handle_question_quest(message, state)
+        elif text == "🏞️ Генерация изображения":
+            await state.clear()
+            await self.picture_promt_listen(message, state)
+        elif text == "📅 Генерация контент плана":
+            await state.clear()
+            await self.content_plane_promt_listen(message, state)
 
     async def cmd_admin(self, message: types.Message):
         """Команда для администраторов"""
@@ -299,6 +310,44 @@ class TextBot:
         """Обработчик кнопки 'Мульти чат'"""
         await message.answer("Выбран режим: Мульти чат")
         # Здесь ваша логика для мульти чата
+
+
+
+    async def picture_promt_listen(self, message: types.Message, state: FSMContext):
+        await message.answer("Гони промт на пикчу!!!")
+        await state.set_state(self.PromptStates.waiting_for_picture_prompt)
+
+    async def picture_generator(self, message: types.Message, state: FSMContext):
+        for_you = message.text
+        """
+        for_you  --> ТВОЙ КОД --> result
+         (str)                    (str)(jpeg_addres)  
+        """
+        result = "/pictures/picture.jpg" # Эту строчку замени
+
+        await state.clear()
+        await message.answer_photo(result)
+        await self.mane_menu(message, state)
+        return
+
+    async def content_plane_promt_listen(self, message: types.Message, state: FSMContext):
+        await message.answer("Гони промт на план!!!")
+        await state.set_state(self.PromptStates.waiting_for_content_plane_prompt)
+
+    async def content_plane_generator(self, message: types.Message, state: FSMContext):
+        for_you = message.text
+        """
+        for_you  --> ТВОЙ КОД --> result
+         (str)                     (str)  
+        """
+        result = str("Text") # Эту строчку замени
+
+        await state.clear()
+        await message.answer(result) # Дописать к result.output_text
+        await self.mane_menu(message, state)
+        return
+
+
 
     async def handle_settings(self, message: types.Message, state: FSMContext):
         """Обработчик кнопки 'Настройки'"""

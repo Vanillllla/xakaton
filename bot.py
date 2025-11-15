@@ -16,25 +16,6 @@ from link_ai import LinkAI
 class TextBot:
     """Класс бота для генерации текста с настройками"""
 
-    # Шаблонные параметры (легко редактировать)
-    TEXT_SIZES = {
-        "small": "Короткий",
-        "medium": "Средний",
-        "large": "Длинный"
-    }
-
-    TEXT_STYLES = {
-        "formal": "Формальный",
-        "casual": "Неформальный",
-        "technical": "Технический"
-    }
-
-    TEXT_TONES = {
-        "neutral": "Нейтральный",
-        "friendly": "Дружелюбный",
-        "professional": "Профессиональный"
-    }
-
     keyboard_yes_no = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="Да", callback_data="yes")],
@@ -60,15 +41,15 @@ class TextBot:
         resize_keyboard=True
     )
 
-    keyboard_sizes = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(
-                text=style_name,
-                callback_data=f"style_{style_key}"  # уникальный идентификатор
-            )]
-            for style_key, style_name in TEXT_STYLES.items()
-        ]
-    )
+    # keyboard_sizes = InlineKeyboardMarkup(
+    #     inline_keyboard=[
+    #         [InlineKeyboardButton(
+    #             text=style_name,
+    #             callback_data=f"style_{style_key}"  # уникальный идентификатор
+    #         )]
+    #         for style_key, style_name in TEXT_STYLES.items()
+    #     ]
+    # )
 
     class PromptStates(StatesGroup):
         """Состояния для FSM"""
@@ -117,7 +98,7 @@ class TextBot:
 
         # Обработчики состояний
         self.dp.message.register(self.process_prompt, self.PromptStates.waiting_for_prompt)
-        self.dp.message.register(self.texst_input, self.PromptStates.waiting_for_text_input)
+        self.dp.message.register(self.dop_text_input, self.PromptStates.waiting_for_text_input)
 
         self.dp.message.register(self.handle_solo_quest, F.text == "Одиночный запрос")
         self.dp.message.register(self.handle_question_quest, F.text == "Запрос с уточнениями")
@@ -183,7 +164,21 @@ class TextBot:
         await message.answer("Теперь введите ваш промт:", reply_markup=types.ReplyKeyboardRemove())
         await state.set_state(self.PromptStates.waiting_for_prompt)
         # Здесь ваша логика для одиночного запроса
-        # Например, установка состояния или вызов другой функции
+
+    async def process_prompt(self, message: types.Message, state: FSMContext):
+        """Обработка промта"""
+        data = await state.get_data()
+        data["prompt"] = message.text
+
+        # Вставить пользовательскую функцию обработки здесь
+        settings = self.db.get_user_settings(message.from_user.id)
+        system_prompt = self.ai.prompt_from_settings(settings)
+        result = self.ai.prompt_with_system_context(message.text, system_prompt)
+
+        await state.clear()
+        await message.answer(result.output_text)
+        await self.mane_menu(message)
+
 
     async def handle_question_quest(self, message: types.Message, state: FSMContext):
         """Обработчик кнопки 'Запрос с уточнениями'"""
@@ -194,26 +189,32 @@ class TextBot:
         await state.update_data()
         await state.set_state(self.PromptStates.waiting_for_text_input)
 
-        # Здесь ваша логика для запроса с уточнениями
+    async def dop_text_input(self, message: types.Message, state: FSMContext):
+        def your_new_func(text: str, params, stop):
+            print(text)
+            print(params)
+            print(stop)
+            id = 666666
+            return {"text", id}
+        state_data = await state.get_data()
+        if "stop_quest" not in state_data:
+            state_data["stop_quest"] = 0
+
+        #await self.ai.
+        your_new_func(message.text, self.ai.prompt_from_settings(self.db.get_user_settings(message.from_user.id)), state_data["stop_quest"] )
+
 
     async def handle_multi_quest(self, message: types.Message):
         """Обработчик кнопки 'Мульти чат'"""
         await message.answer("Выбран режим: Мульти чат")
         # Здесь ваша логика для мульти чата
 
-    async def handle_settings(self, message: types.Message):
+    async def handle_settings(self, message: types.Message, state: FSMContext):
         """Обработчик кнопки 'Настройки'"""
         await message.answer("Открыты настройки", reply_markup=self.keyboard_settings)
         # Здесь ваша логика для настроек
         # Например, показать клавиатуру с настройками
 
-    async def texst_input(self, message: types.Message, state: FSMContext):
-        pass
-
-    async def process_prompt(self, message: types.Message, state: FSMContext):
-        """Обработка промта"""
-        data = await state.get_data()
-        data["prompt"] = message.text
 
         # Вставить пользовательскую функцию обработки здесь
         settings = self.db.get_user_settings(message.from_user.id)

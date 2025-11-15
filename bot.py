@@ -11,6 +11,8 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, user, CallbackQuery
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from dotenv import load_dotenv
+from pyexpat.errors import messages
+
 from database import Database
 from link_ai import LinkAI
 
@@ -21,10 +23,10 @@ class TextBot:
     keyboard_quest = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="⬅️", callback_data="back"), InlineKeyboardButton(text="➡️", callback_data="next")],
-            [InlineKeyboardButton(text="🏠В меню", callback_data="menu"), InlineKeyboardButton(text="✅ Отправить", callback_data="finish")],
+            [InlineKeyboardButton(text="🏠В меню", callback_data="menu"), InlineKeyboardButton(text="✅ Завершить", callback_data="finish")],
         ]
     )
-
+    keyboard_quest.inline_keyboard[0][1] = InlineKeyboardButton(text="stop", callback_data="none")
     keyboard_yes_no = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="Да", callback_data="yes")],
@@ -44,7 +46,7 @@ class TextBot:
 
     keyboard_dop_main = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="● █▀█▄ Ɑ͞ ̶͞ ̶͞ ̶͞ لں͞ Генерация изображения"), KeyboardButton(text="Мульти-чат")],
+            [KeyboardButton(text="Генерация изображения"), KeyboardButton(text="Мульти-чат")],
             [KeyboardButton(text="📅 Генерация контент плана"), KeyboardButton(text="🔙 Назад")],
         ],
         resize_keyboard=True,  # Подгонка под размер
@@ -53,7 +55,7 @@ class TextBot:
 
     keyboard_dop_main_a = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="● █▀█▄ Ɑ͞ ̶͞ ̶͞ ̶͞ لں͞ Генерация изображения"), KeyboardButton(text="Мульти-чат")],
+            [KeyboardButton(text="Генерация изображения"), KeyboardButton(text="Мульти-чат")],
             [KeyboardButton(text="📅 Генерация контент плана"), KeyboardButton(text="🔙 Назад"), KeyboardButton(text="⚙️ Настройки бота")],
         ],
         resize_keyboard=True,  # Подгонка под размер
@@ -130,15 +132,8 @@ class TextBot:
 
         # Обработчики для вопросов
         self.dp.message.register(self.handle_quest_text, self.QuestState.to_text_answer)
-        self.dp.message.register(self.handle_question_quest, self.QuestState.to_quest)
-        self.dp.callback_query.register(self.handle_quest_callback,StateFilter(self.QuestState.to_quest))
+        self.dp.callback_query.register(self.handle_quest_callback,StateFilter(self.QuestState.to_text_answer))
 
-        # self.dp.message.register(self.handle_solo_quest, F.text == "📝 Одиночный запрос")
-        # self.dp.message.register(self.handle_question_quest, F.text == "❓ Запрос с уточнениями")
-        # self.dp.message.register(self.handle_multi_quest, F.text == "Мульти чат")
-        # self.dp.message.register(self.handle_settings, F.text == "🛠️ Настройки генерации")
-        # self.dp.message.register(self.dop_menu, F.text == "🗂️ Доп. функции")
-        # self.dp.message.register(self.mane_menu, F.text == "")
         self.dp.message.register(self.menu_handler, self.MainMenu.menu_handler)
         self.dp.message.register(self.mane_menu, self.MainMenu.mane_state)
 
@@ -170,8 +165,6 @@ class TextBot:
         elif text == "❓ Запрос с уточнениями":
             await state.clear()
             await self.handle_question_quest(message, state)
-
-
 
     async def cmd_admin(self, message: types.Message):
         """Команда для администраторов"""
@@ -241,36 +234,52 @@ class TextBot:
             with open('settings.json', 'r', encoding='utf-8') as file:
                 quests_0 = json.load(file)
             quests = quests_0['questions']
+            await state.update_data(quests=quests)
+            data["quests"] = quests
+            await state.update_data(quests_count=len(quests))
+            data["quests_count"] = len(quests)
 
+        quests = data["quests"]
         print(data)
 
-        with open('settings.json', 'r', encoding='utf-8') as file:
-            quests_0 = json.load(file)
-        quests = quests_0['questions']
-
-        if data["finish"] == 1 or data["quest"] == 4:
-            resp = self.ai.dialogue(data["quest_data"]).output_text
+        if data["finish"] == 1:
+            resp = self.ai.dialogue(data["quest_data"]) #".output_text
             await message.answer(resp)
             await state.clear()
             await self.mane_menu(message, state)
             return None
+        new_keyboard = self.keyboard_quest.copy
+        if data["quest"] >= data["quests_count"]:
+            self.keyboard_quest.inline_keyboard[0] = [InlineKeyboardButton(text="⬅️", callback_data="back")]
+        elif data["quest"] <= 1:
+            self.keyboard_quest.inline_keyboard[0] = [InlineKeyboardButton(text="➡️", callback_data="next")]
+        else:
+            self.keyboard_quest.inline_keyboard[0] = [InlineKeyboardButton(text="⬅️", callback_data="back"), InlineKeyboardButton(text="➡️", callback_data="next")]
         await message.answer(quests[str(data["quest"])]["text"], reply_markup=self.keyboard_quest)
 
         await state.set_state(self.QuestState.to_text_answer)
+        return None
 
     async def handle_quest_callback(self, callback: CallbackQuery, state: FSMContext):
         data = await state.get_data()
-
-        # Обработка нажатия кнопки
-        # await callback_query.message.edit_text("Переход выполнен!")
-
-        if callback.data == "next":
-
-            print("Next quest")
-            await state.update_data(quest=data["quest"]+1)
-
-
+        print("button pressed")
         await callback.answer()
+        if callback.data == "next":
+            await self.bot.delete_message(chat_id=callback.from_user.id, message_id=callback.message.message_id)
+            await state.update_data(quest=data["quest"]+1)
+        elif callback.data == "back":
+            await self.bot.delete_message(chat_id=callback.from_user.id, message_id=callback.message.message_id)
+            await state.update_data(quest=data["quest"]-1)
+        elif callback.data == "finish":
+            await self.bot.delete_message(chat_id=callback.from_user.id, message_id=callback.message.message_id)
+            await state.update_data(finish=1)
+        elif callback.data == "menu":
+            await self.bot.delete_message(chat_id=callback.from_user.id, message_id=callback.message.message_id)
+            await state.clear()
+            await self.mane_menu(callback.message, state)
+            return None
+
+
         await self.handle_question_quest(callback.message, state)
 
     async def handle_quest_text(self, message: types.Message, state: FSMContext):

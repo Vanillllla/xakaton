@@ -207,6 +207,7 @@ class TextBot:
             data["quest"] = 1
             await state.update_data(finish=0)
             data["finish"] = 0
+            await state.update_data(quest_data={})
         print(data)
 
         with open('settings.json', 'r', encoding='utf-8') as file:
@@ -215,14 +216,13 @@ class TextBot:
 
         await message.answer(quests[str(data["quest"])]["text"], reply_markup=self.keyboard_quest)
 
-        if data["finish"] == 1:
-            '''
-            Словарь --> Запрос к нейронке --> return text 
-            '''
+        if data["finish"] == 1 or data["quest"] == 4:
             settings = self.db.get_user_settings(message.from_user.id)
             data["quest_data"]["system"] = self.ai.prompt_from_settings(settings)
             resp = self.ai.dialogue(data["quest_data"]).output_text
+            await message.answer(resp + "\n\n!!!ЕГОР ЕБЛАН!!!!")
             await state.clear()
+            await self.mane_menu(message)
 
 
 
@@ -250,8 +250,10 @@ class TextBot:
 
         print("Типа сохранилось:", message.text)
 
-        await state.update_data(quest=data["quest"] + 1)
+        quest_data = data.get("quest_data", {})
+        quest_data[str(data["quest"])] = message.text
 
+        await state.update_data(quest_data=quest_data)
         await state.update_data(quest=data["quest"] + 1)
 
         await self.handle_question_quest(message, state)

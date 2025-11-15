@@ -224,7 +224,7 @@ class LinkAI:
             temperature=0.8
         )"""
 
-        return 'text'
+        return "text"
 
 
 if __name__ == "__main__":

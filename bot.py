@@ -32,11 +32,29 @@ class TextBot:
             [InlineKeyboardButton(text="Наверное", callback_data="WTF??!")],
         ]
     )
-
+    # KeyboardButton(text="Мульти чат")
     keyboard_main = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Одиночный запрос"), KeyboardButton(text="Запрос с уточнениями")],
-            [KeyboardButton(text="Мульти чат"), KeyboardButton(text="Настройки")],
+            [KeyboardButton(text="📝 Одиночный запрос"), KeyboardButton(text="🗂️ Доп. функции")],
+            [KeyboardButton(text="❓ Запрос с уточнениями"), KeyboardButton(text="🛠️ Настройки генерации")],
+        ],
+        resize_keyboard=True,  # Подгонка под размер
+        one_time_keyboard=True  # Скрыть после нажатия
+    )
+
+    keyboard_dop_main = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="● █▀█▄ Ɑ͞ ̶͞ ̶͞ ̶͞ لں͞ Генерация изображения"), KeyboardButton(text="Мульти-чат")],
+            [KeyboardButton(text="📅 Генерация контент плана"), KeyboardButton(text="🔙 Назад")],
+        ],
+        resize_keyboard=True,  # Подгонка под размер
+        one_time_keyboard=True  # Скрыть после нажатия
+    )
+
+    keyboard_dop_main_a = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="● █▀█▄ Ɑ͞ ̶͞ ̶͞ ̶͞ لں͞ Генерация изображения"), KeyboardButton(text="Мульти-чат")],
+            [KeyboardButton(text="📅 Генерация контент плана"), KeyboardButton(text="🔙 Назад"), KeyboardButton(text="⚙️ Настройки бота")],
         ],
         resize_keyboard=True,  # Подгонка под размер
         one_time_keyboard=True  # Скрыть после нажатия
@@ -67,9 +85,8 @@ class TextBot:
 
     class MainMenu(StatesGroup):
         mane_state = State()
-        settings = State()
-        admin = State()
-        solo_quest = State()
+        dop_state = State()
+        menu_handler = State()
 
     class QuestState(StatesGroup):
         to_quest = State()
@@ -107,7 +124,6 @@ class TextBot:
         self.dp.message.register(self.cmd_start, Command("start"))
         self.dp.message.register(self.cmd_admin, Command("admin"))
         self.dp.message.register(self.cmd_help, Command("help"))
-        self.dp.message.register(self.test, Command("test"))
 
         # Обработчики состояний
         self.dp.message.register(self.process_prompt, self.PromptStates.waiting_for_prompt)
@@ -117,29 +133,45 @@ class TextBot:
         self.dp.message.register(self.handle_question_quest, self.QuestState.to_quest)
         self.dp.callback_query.register(self.handle_quest_callback,StateFilter(self.QuestState.to_quest))
 
-        self.dp.message.register(self.handle_solo_quest, F.text == "Одиночный запрос")
-        self.dp.message.register(self.handle_question_quest, F.text == "Запрос с уточнениями")
-        self.dp.message.register(self.handle_multi_quest, F.text == "Мульти чат")
-        self.dp.message.register(self.handle_settings, F.text == "Настройки")
+        # self.dp.message.register(self.handle_solo_quest, F.text == "📝 Одиночный запрос")
+        # self.dp.message.register(self.handle_question_quest, F.text == "❓ Запрос с уточнениями")
+        # self.dp.message.register(self.handle_multi_quest, F.text == "Мульти чат")
+        # self.dp.message.register(self.handle_settings, F.text == "🛠️ Настройки генерации")
+        # self.dp.message.register(self.dop_menu, F.text == "🗂️ Доп. функции")
+        # self.dp.message.register(self.mane_menu, F.text == "")
+        self.dp.message.register(self.menu_handler, self.MainMenu.menu_handler)
         self.dp.message.register(self.mane_menu, self.MainMenu.mane_state)
+
 
         self.dp.message.register(self.mane_menu, F.text == "В меню")
 
-    async def test(self, message: types.Message):
-        pass
+    async def mane_menu(self, message: types.Message, state: FSMContext):
+        await message.answer("Главное меню :",
+                             reply_markup=self.keyboard_main)
+        await state.set_state(self.MainMenu.menu_handler)
 
-    async def notify_admins_on_startup(self):
-        """Уведомить администраторов о запуске бота"""
-        admins = self.db.get_admins_id()
+    async def dop_menu(self, message: types.Message, state: FSMContext):
+        await message.delete()
+        # if message.from_user.id in self.db.get_admins_id():
+        #     await message.answer("Дополнительное меню : ",reply_markup=self.keyboard_dop_main_a)
+        # else:
+        await message.answer("Дополнительное меню : ",reply_markup=self.keyboard_dop_main)
+        await state.set_state(self.MainMenu.menu_handler)
 
-        for admin_id in admins:
-            try:
-                await self.bot.send_message(
-                    chat_id=admin_id,
-                    text="✅ Бот запущен и готов к работе! /start"
-                )
-            except Exception as e:
-                print(f"Не удалось отправить уведомление администратору {admin_id}: {e}")
+    async def menu_handler(self, message: types.Message, state: FSMContext):
+        text = message.text
+        if text == "🗂️ Доп. функции":
+            await self.dop_menu(message, state)
+        elif text == "🔙 Назад":
+            await self.mane_menu(message, state)
+        elif text == "📝 Одиночный запрос":
+            await state.clear()
+            await self.handle_solo_quest(message, state)
+        elif text == "❓ Запрос с уточнениями":
+            await state.clear()
+            await self.handle_question_quest(message, state)
+
+
 
     async def cmd_admin(self, message: types.Message):
         """Команда для администраторов"""
@@ -156,11 +188,7 @@ class TextBot:
                              f"/help\n"
                              f"/admin\n")
 
-    async def mane_menu(self, message: types.Message):
-        await message.answer("Выберите режим для продолжения работы:",
-                             reply_markup=self.keyboard_main)
-
-    async def cmd_start(self, message: types.Message):
+    async def cmd_start(self, message: types.Message, state: FSMContext):
         """Команда старта с регистрацией"""
         user = message.from_user
         if not self.db.user_exists(user.id):
@@ -173,6 +201,8 @@ class TextBot:
 
         await message.answer(f"Добро пожаловать {user.full_name}! Выберите режим для начала работы:",
                              reply_markup=self.keyboard_main)
+
+        await state.set_state(self.MainMenu.menu_handler)
 
     async def handle_solo_quest(self, message: types.Message, state: FSMContext):
         """Обработчик кнопки 'Одиночный запрос'"""
@@ -194,8 +224,8 @@ class TextBot:
 
         await state.clear()
         await message.answer(result.output_text)
-        await self.mane_menu(message)
-
+        await self.mane_menu(message, state)
+        return
 
     async def handle_question_quest(self, message : types.Message, state: FSMContext):
         data = await state.get_data()
@@ -208,31 +238,31 @@ class TextBot:
             await state.update_data(finish=0)
             data["finish"] = 0
             await state.update_data(quest_data={})
+            with open('settings.json', 'r', encoding='utf-8') as file:
+                quests_0 = json.load(file)
+            quests = quests_0['questions']
+
         print(data)
 
         with open('settings.json', 'r', encoding='utf-8') as file:
             quests_0 = json.load(file)
         quests = quests_0['questions']
 
-        await message.answer(quests[str(data["quest"])]["text"], reply_markup=self.keyboard_quest)
-
         if data["finish"] == 1 or data["quest"] == 4:
-            resp = self.ai.dialogue(data["quest_data"]).output_text
+            resp = self.ai.dialogue(data["quest_data"]) #.output_text
             await message.answer(resp)
             await state.clear()
-            await self.mane_menu(message)
-
-
+            await self.mane_menu(message, state)
+            return None
+        await message.answer(quests[str(data["quest"])]["text"], reply_markup=self.keyboard_quest)
 
         await state.set_state(self.QuestState.to_text_answer)
-
-
 
     async def handle_quest_callback(self, callback: CallbackQuery, state: FSMContext):
         data = await state.get_data()
 
         # Обработка нажатия кнопки
-        # await callback_query.message.edit_text("Переход выполнен!"
+        # await callback_query.message.edit_text("Переход выполнен!")
 
         if callback.data == "next":
 
@@ -267,6 +297,18 @@ class TextBot:
         # Здесь ваша логика для настроек
         # Например, показать клавиатуру с настройками
 
+    async def notify_admins_on_startup(self):
+        """Уведомить администраторов о запуске бота"""
+        admins = self.db.get_admins_id()
+
+        for admin_id in admins:
+            try:
+                await self.bot.send_message(
+                    chat_id=admin_id,
+                    text="✅ Бот запущен и готов к работе! /start"
+                )
+            except Exception as e:
+                print(f"Не удалось отправить уведомление администратору {admin_id}: {e}")
 
     async def run(self):
         """Запуск бота"""

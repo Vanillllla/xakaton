@@ -1,7 +1,9 @@
 import asyncio
 import json
 import os
+import pathlib
 from math import pi
+from pathlib import Path
 
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, StateFilter
@@ -253,7 +255,7 @@ class TextBot:
 
         if data["finish"] == 1:
             resp = self.ai.dialogue(data["quest_data"]) #".output_text
-            await message.answer(resp)
+            await message.answer(resp.output_text)
             await state.clear()
             await self.mane_menu(message, state)
             return None
@@ -312,36 +314,45 @@ class TextBot:
 
 
     async def picture_promt_listen(self, message: types.Message, state: FSMContext):
-        await message.answer("Гони промт на пикчу!!!")
+        await message.answer("Опишите, что вы хотите нарисовать")
         await state.set_state(self.PromptStates.waiting_for_picture_prompt)
 
     async def picture_generator(self, message: types.Message, state: FSMContext):
-        for_you = message.text
+        prompt = message.text
         """
         for_you  --> ТВОЙ КОД --> result
          (str)                    (str)(jpeg_addres)  
         """
         result = "pictures/picture.jpg" # Эту строчку замени
-
+        path = pathlib.Path(result)
+        try:
+            resp = await self.ai.draw(prompt)
+            path.write_bytes(resp.image_bytes)
+        finally:
+            pass
         await state.clear()
         await message.answer_photo(FSInputFile(result))
         await self.mane_menu(message, state)
         return
 
     async def content_plane_promt_listen(self, message: types.Message, state: FSMContext):
-        await message.answer("Гони промт на план!!!")
+        await message.answer(
+            """
+            Напишите на какой срок составить контент-план, по желанию укажите частоту публикаций, целевую аудиторию,
+            предстоящие события, перечислите используемые хештэги, организации с которыми вы сотрудничаете.
+            """)
         await state.set_state(self.PromptStates.waiting_for_content_plane_prompt)
 
     async def content_plane_generator(self, message: types.Message, state: FSMContext):
-        for_you = message.text
+        prompt = message.text
         """
         for_you  --> ТВОЙ КОД --> result
          (str)                     (str)  
         """
-        result = str("Text") # Эту строчку замени
+        result = self.ai.content_plan(prompt) # Эту строчку замени
 
         await state.clear()
-        await message.answer(result) # Дописать к result.output_text если надо
+        await message.answer(result.output_text) # Дописать к result.output_text если надо
         await self.mane_menu(message, state)
         return
 

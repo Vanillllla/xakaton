@@ -1,5 +1,7 @@
 import asyncio
+import json
 import os
+from idlelib.window import add_windows_to_menu
 from math import pi
 
 from aiogram import Bot, Dispatcher, types, F
@@ -62,6 +64,11 @@ class TextBot:
         admin = State()
         solo_quest = State()
 
+    class QuestState(StatesGroup):
+        to_quest = State()
+        to_3 = State()
+        to_4 = State()
+
     def __init__(self):
         """Инициализация бота и БД"""
         load_dotenv()
@@ -98,7 +105,8 @@ class TextBot:
 
         # Обработчики состояний
         self.dp.message.register(self.process_prompt, self.PromptStates.waiting_for_prompt)
-        self.dp.message.register(self.dop_text_input, self.PromptStates.waiting_for_text_input)
+
+        self.dp.message.register(self.ques_2, self.QuestState.to_quest)
 
         self.dp.message.register(self.handle_solo_quest, F.text == "Одиночный запрос")
         self.dp.message.register(self.handle_question_quest, F.text == "Запрос с уточнениями")
@@ -182,26 +190,51 @@ class TextBot:
 
     async def handle_question_quest(self, message: types.Message, state: FSMContext):
         """Обработчик кнопки 'Запрос с уточнениями'"""
-        await state.clear()
-        await message.answer("Выбран режим: Запрос с уточнениями")
-        # await message.answer("Хотите подключить системные данные?", reply_markup=self.keyboard_yes_no)
-        await message.answer("Теперь введите ваш промт:")
-        await state.update_data()
-        await state.set_state(self.PromptStates.waiting_for_text_input)
+        data = await state.get_data()
+        if "quest" not in data:
+            await state.clear()
+            await message.answer("Выбран режим: Запрос с уточнениями")
+            await state.update_data(quest=1)
 
-    async def dop_text_input(self, message: types.Message, state: FSMContext):
-        def your_new_func(text: str, params, stop):
-            print(text)
-            print(params)
-            print(stop)
-            id = 666666
-            return {"text", id}
-        state_data = await state.get_data()
-        if "stop_quest" not in state_data:
-            state_data["stop_quest"] = 0
 
-        #await self.ai.
-        your_new_func(message.text, self.ai.prompt_from_settings(self.db.get_user_settings(message.from_user.id)), state_data["stop_quest"] )
+        with open('data.json', 'r', encoding='utf-8') as file:
+            quests = json.load(file)
+        selected_dict = quests['users']
+        if data["finish"] == 1:
+            '''
+            Запрос к нейронке
+            '''
+            await state.clear()
+
+        await state.set_state(self.QuestState.to_quest)
+
+    async def quest_num(self, message: types.Message, state: FSMContext):
+
+        await state.set_state(self.PromptStates.fff)
+
+    async def ques_2(self, message: types.Message, state: FSMContext):
+
+        await state.set_state(self.QuestState.to_3)
+
+    async def ques_3(self, message: types.Message, state: FSMContext):
+
+        await state.set_state(self.QuestState.to_4)
+
+    async def ques_4(self, message: types.Message, state: FSMContext):
+
+        await state.set_state(self.QuestState.to_5)
+
+    async def ques_5(self, message: types.Message, state: FSMContext):
+
+        await state.set_state(self.QuestState.to_6)
+
+    async def ques_6(self, message: types.Message, state: FSMContext):
+
+        await state.set_state(self.QuestState.to_7)
+
+    async def ques_7(self, message: types.Message, state: FSMContext):
+
+        await state.set_state(self.QuestState.to_8)
 
 
     async def handle_multi_quest(self, message: types.Message):

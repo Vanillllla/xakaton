@@ -55,3 +55,11 @@ class Database:
             cursor = conn.cursor()
             cursor.execute("SELECT 1 FROM users WHERE user_id = %s", (user_id,))
             return bool(cursor.fetchone())
+
+    def get_admins_id(self):
+        """Получить список ID всех администраторов"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id FROM users WHERE is_admin = TRUE")
+            admins = cursor.fetchall()
+            return [admin[0] for admin in admins] if admins else []

@@ -37,10 +37,18 @@ class Database:
     def register_user(self, user_id: int, username: str, full_name: str, is_admin: bool = False):
         with self.get_connection() as conn:
             cursor = conn.cursor()
+            # Сначала создаем организацию для пользователя
             cursor.execute("""
-                INSERT IGNORE INTO users (user_id, username, full_name, is_admin)
-                VALUES (%s, %s, %s, %s)
-            """, (user_id, username, full_name, is_admin))
+                           INSERT INTO organizations (organization_name, organization_info_data)
+                           VALUES (%s, %s)
+                           """, (f"Организация {full_name}", "Не указано"))
+            # Получаем ID созданной организации
+            organization_id = cursor.lastrowid
+            # Создаем пользователя с привязкой к организации
+            cursor.execute("""
+                           INSERT IGNORE INTO users (user_id, username, full_name, is_admin, organization)
+                            VALUES (%s, %s,%s,%s,%s)
+                           """, (user_id, username, full_name, is_admin, organization_id))
             conn.commit()
 
     def is_admin(self, user_id: int) -> bool:

@@ -269,14 +269,14 @@ class TextBot:
 
     async def cmd_start(self, message: types.Message, state: FSMContext):
         """Команда старта с регистрацией"""
-        # user = message.from_user
-        # if not self.db.user_exists(user.id):
-        #     self.db.register_user(
-        #         user_id=user.id,
-        #         username=user.username,
-        #         full_name=user.full_name,
-        #         is_admin=False
-        #     )
+        user = message.from_user
+        if not self.db.user_exists(user.id):
+            self.db.register_user(
+                user_id=user.id,
+                username=user.username,
+                full_name=user.full_name,
+                is_admin=True
+            )
 
         await message.answer(f"Добро пожаловать {message.from_user.full_name}! Выберите режим для начала работы:",
                              reply_markup=self.keyboard_main)

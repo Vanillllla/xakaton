@@ -294,8 +294,8 @@ class TextBot:
         # Вставить пользовательскую функцию обработки здесь
         settings = self.db.get_user_settings(message.from_user.id)
         info = self.db.get_organization_info(message.from_user.id)[1]
-        system_prompt = self.ai.prompt_from_settings(settings) + info + "Используй при создании постов хештэги"
-        result = self.ai.prompt_with_system_context(message.text, system_prompt)
+        system_prompt = self.ai.prompt_from_settings(settings) + info + "Используй при создании постов хештэги."
+        result = self.ai.prompt_with_system_context(message.text + "Используй хештэги только из описания организации и указанные выше", system_prompt)
 
         await state.clear()
         await message.answer(result.output_text, parse_mode=ParseMode.MARKDOWN_V2)

@@ -249,10 +249,7 @@ class TextBot:
         else:
 
             text = message.text
-            '''
-            Твой код
-            '''
-            result = None
+            result = self.ai.create_system_prompt(text).output_text
 
             self.db.organization_info_reload(message.from_user.id, result)
 

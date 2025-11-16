@@ -1,7 +1,6 @@
 # xakaton
 
-TG-bot
-
+TG-bot @xakaton_ulitki_na_sire_bot
 На данный момент поддерживаются только модели базового инстанса Yandex Cloud
 > Перед началом работы
 > Чтобы начать работать в Yandex Cloud:

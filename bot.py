@@ -311,6 +311,7 @@ class TextBot:
     async def text_upgrader_hendler(self, callback: CallbackQuery, state: FSMContext):
         data = await state.get_data()
         if callback.data == "":
+            pass
 
 
 

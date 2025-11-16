@@ -151,13 +151,13 @@ class TextBot:
         self.dp.message.register(self.adm_add, self.MainMenu.rec_settings_adm)
 
         self.dp.message.register(self.menu_handler, self.MainMenu.menu_handler)
-        self.dp.message.register(self.mane_menu, self.MainMenu.mane_state)
+        self.dp.message.register(self.main_menu, self.MainMenu.mane_state)
 
         # Обработчики для улучшения текста
         self.dp.message.register(self.text_upgrader, self.UpGradeState.to_settings)
         self.dp.callback_query.register(self.text_upgrader_hendler, StateFilter(self.UpGradeState.to_settings))
 
-    async def mane_menu(self, message: types.Message, state: FSMContext):
+    async def main_menu(self, message: types.Message, state: FSMContext):
         await message.answer("Главное меню :",
                              reply_markup=self.keyboard_main)
         await state.set_state(self.MainMenu.menu_handler)
@@ -172,7 +172,7 @@ class TextBot:
         if text == "🗂️ Доп. функции":
             await self.dop_menu(message, state)
         elif text == "🔙 Назад":
-            await self.mane_menu(message, state)
+            await self.main_menu(message, state)
         elif text == "🔥 Разовый запрос":
             await state.clear()
             await self.handle_solo_quest(message, state)
@@ -230,9 +230,9 @@ class TextBot:
             else:
                 await message.answer("Пользователь не зарегистрирован в системе")
             await state.clear()
-            await self.mane_menu(message, state)
+            await self.main_menu(message, state)
         await state.clear()
-        await self.mane_menu(message, state)
+        await self.main_menu(message, state)
         return
 
     async def org_info_add(self, message: types.Message, state: FSMContext):
@@ -250,7 +250,7 @@ class TextBot:
 
             await message.answer("Данные обновлены")
         await state.clear()
-        await self.mane_menu(message, state)
+        await self.main_menu(message, state)
         return
 
     async def org_info(self, message: types.Message, state: FSMContext):
@@ -258,7 +258,7 @@ class TextBot:
 
         await message.message.answer(f"Название : \n{info[1]}\n\nОписание : \n{info[0]}")
         await state.clear()
-        await self.mane_menu(message, state)
+        await self.main_menu(message, state)
 
     async def cmd_help(self, message: types.Message):
         await message.answer(f"Доступные команды :\n"
@@ -315,12 +315,12 @@ class TextBot:
 
 
         if callback.data == "up_1":
-            await callback.message.edit_text("Делаю текст красивше )) : ")
+            await callback.message.edit_text("Переписываю текст: ")
 
             """
             text + up_1/2/... --> улучшение --> result
             """
-            result = "красивый текст"
+            result = self.ai.upgrade(text).output_text
 
             await callback.message.answer(result)
             await state.update_data(text=result)
@@ -332,7 +332,7 @@ class TextBot:
             """
             text + up_1/2/... --> улучшение --> result
             """
-            result = "Другими словами текст"
+            result = self.ai.rewrite(text).output_text
 
             await callback.message.answer(result)
             await state.update_data(text=result)
@@ -344,7 +344,7 @@ class TextBot:
             """
             text + up_1/2/... --> улучшение --> result
             """
-            result = "Кратко текст"
+            result = self.ai.shorter(text).output_text
 
             await callback.message.answer(result)
             await state.update_data(text=result)
@@ -356,7 +356,7 @@ class TextBot:
             """
             text + up_1/2/... --> улучшение --> result
             """
-            result = "Проще текст"
+            result = self.ai.easier(text).output_text
 
             await callback.message.answer(result)
             await state.update_data(text=result)
@@ -366,7 +366,7 @@ class TextBot:
         elif callback.data == "stop":
             await state.clear()
             await callback.message.delete()
-            await self.mane_menu(callback.message, state)
+            await self.main_menu(callback.message, state)
         elif callback.data == "edit":
             await callback.message.edit_text("Введите измелённый текст :")
             await state.update_data(state="main_to_params")
@@ -395,7 +395,7 @@ class TextBot:
 
         await state.clear()
         await message.answer(result.output_text)
-        await self.mane_menu(message, state)
+        await self.main_menu(message, state)
         return
 
     async def handle_question_quest(self, message: types.Message, state: FSMContext):
@@ -424,7 +424,7 @@ class TextBot:
             resp = self.ai.dialogue(data["quest_data"], info)
             await message.answer(resp.output_text)
             await state.clear()
-            await self.mane_menu(message, state)
+            await self.main_menu(message, state)
             return
 
         if data["quest"] >= data["quests_count"]:
@@ -457,7 +457,7 @@ class TextBot:
         elif callback.data == "menu":
             await self.bot.delete_message(chat_id=callback.from_user.id, message_id=callback.message.message_id)
             await state.clear()
-            await self.mane_menu(callback.message, state)
+            await self.main_menu(callback.message, state)
             return None
 
         await self.handle_question_quest(callback.message, state)
@@ -511,7 +511,7 @@ class TextBot:
 
         await state.clear()
         await message.answer(result.output_text)
-        await self.mane_menu(message, state)
+        await self.main_menu(message, state)
         return
 
     async def settings(self, message: types.Message, state: FSMContext):
@@ -576,7 +576,7 @@ class TextBot:
         elif callback.data == "to_menu":
             await self.bot.delete_message(chat_id=callback.from_user.id, message_id=callback.message.message_id)
             await state.clear()
-            await self.mane_menu(callback.message, state)
+            await self.main_menu(callback.message, state)
         elif callback.data == "back":
             await self.settings(callback.message, state)
         elif callback.data == "save":

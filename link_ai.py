@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from yandex_cloud_ml_sdk import YCloudML
 import os
 import json
+from datetime import date
 
 
 class LinkAI:
@@ -58,7 +59,7 @@ class LinkAI:
 
     def prompt_with_system_context(self, prompt, context):
         '''
-        Промпт и знание об НКО
+        Промпт и информация об НКО
         :param prompt:
         :param context:
         :return:
@@ -71,7 +72,7 @@ class LinkAI:
 
         response = client.responses.create(
             model=f"gpt://{self.CLOUD_FOLDER}/{self.MODEL}",
-            input=[{"role": "system", "content": context},
+            input=[{"role": "system", "content": context + f"Сегодня: {date.today()}"},
                    {"role": "user", "content": prompt}],
         )
 
@@ -79,7 +80,7 @@ class LinkAI:
 
     def prompt(self, prompt, context, system):
         '''
-        Промпт с знанием об НКО и контекстом диалоаг
+        Промпт с информацией об НКО и контекстом диалоаг
         :param prompt:
         :param context:
         :param system:
@@ -93,7 +94,7 @@ class LinkAI:
 
         response = client.responses.create(
             model=f"gpt://{self.CLOUD_FOLDER}/{self.MODEL}",
-            input=[{"role": "system", "content": system},
+            input=[{"role": "system", "content": system + f"Сегодня: {date.today()}"},
                    {"role": "user", "content": prompt}],
             previous_response_id=context
         )
@@ -102,7 +103,7 @@ class LinkAI:
 
     async def draw(self, prompt):
         '''
-        Делает картинки
+        Делает картинки по текстомову запросу
         :param prompt:
         :return:
         '''
@@ -117,9 +118,9 @@ class LinkAI:
 
         return result
 
-    def rewrite(self, prompt):
+    def upgrade(self, prompt):
         '''
-        Исправление ошибок
+        Исправление ошибок в тексте
         :param prompt:
         :return:
         '''
@@ -134,6 +135,81 @@ class LinkAI:
             input=[{
                 "role": "system",
                 "content": "Исправь грамматические, орфографические и пунктуационные ошибки в тексте. Сохраняй исходный порядок слов."
+            }, {"role": "user", "content": prompt}],
+            temperature=0.2,
+            max_output_tokens=1500
+        )
+
+        return response
+
+
+    def rewrite(self, prompt):
+        '''
+        Переписывает текст другими словами
+        :param prompt:
+        :return:
+        '''
+        client = openai.OpenAI(
+            api_key=self.API_KEY,
+            base_url="https://rest-assistant.api.cloud.yandex.net/v1",
+            project=self.CLOUD_FOLDER
+        )
+
+        response = client.responses.create(
+            model=f"gpt://{self.CLOUD_FOLDER}/{self.MODEL}",
+            input=[{
+                "role": "system",
+                "content": "Перепиши текст другими словами"
+            }, {"role": "user", "content": prompt}],
+            temperature=0.9,
+            max_output_tokens=1500
+        )
+
+        return response
+
+
+    def shorter(self, prompt):
+        '''
+        Сокращает текст
+        :param prompt:
+        :return:
+        '''
+        client = openai.OpenAI(
+            api_key=self.API_KEY,
+            base_url="https://rest-assistant.api.cloud.yandex.net/v1",
+            project=self.CLOUD_FOLDER
+        )
+
+        response = client.responses.create(
+            model=f"gpt://{self.CLOUD_FOLDER}/{self.MODEL}",
+            input=[{
+                "role": "system",
+                "content": "Перепиши текст короче"
+            }, {"role": "user", "content": prompt}],
+            temperature=0.6,
+            max_output_tokens=1500
+        )
+
+        return response
+
+
+    def easier(self, prompt):
+        '''
+        Пересказывает текст проще
+        :param prompt:
+        :return:
+        '''
+        client = openai.OpenAI(
+            api_key=self.API_KEY,
+            base_url="https://rest-assistant.api.cloud.yandex.net/v1",
+            project=self.CLOUD_FOLDER
+        )
+
+        response = client.responses.create(
+            model=f"gpt://{self.CLOUD_FOLDER}/{self.MODEL}",
+            input=[{
+                "role": "system",
+                "content": "Перепиши текст проще для понимания"
             }, {"role": "user", "content": prompt}],
             temperature=0.8,
             max_output_tokens=1500
@@ -162,7 +238,7 @@ class LinkAI:
 на период [указать временной промежуток, например, месяц] с учётом следующих параметров:   
 1. Укажи дни когда нужно сделать пост, учитывая частоту, если указана, и важные события
 2. Для каждого поста в плане укажи его тематику, хештэг к нему, варианты для его оформления.
-Опирайся на информацию ниже ㅤ{info}"""
+Опирайся на информацию ниже ㅤ{info}""" + f"Сегодня: {date.today()}"
 
             }, {"role": "user", "content": prompt}],
             temperature=0.8
@@ -172,10 +248,10 @@ class LinkAI:
 
     def create_system_prompt(self, prompt):
         '''
-                Функция для собирания информации об организации в системный промт
-                :param prompt:
-                :return:
-                '''
+        Функция для собирания информации об организации в системный промт
+        :param prompt:
+        :return:
+        '''
         client = openai.OpenAI(
             api_key=self.API_KEY,
             base_url="https://rest-assistant.api.cloud.yandex.net/v1",
@@ -217,7 +293,7 @@ class LinkAI:
 Ты опытный SMM специалист, ты помогаешь Не Коммерческой Организации сделать пост в их социальных сетях. 
 Для получения информации ты сначала проводишь опрос, потом предлагешь текст поста. 
 Ответы уже получены. Старайся не ссылаться на примеры в заданных тобой вопросах. 
-Используй хештэги указанные пользователем и подходящие из описания НКО, указанного ниже.{org_info}"""}]
+Используй хештэги указанные пользователем и подходящие из описания НКО, указанного ниже.{org_info}""" + f"Сегодня: {date.today()}"}]
         for key, value in answers.items():
             messages.append({"role": "assistant", "content": self.QUESTIONS[key]["text"]})
             messages.append({"role": "user", "content": value})

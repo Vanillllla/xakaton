@@ -189,7 +189,6 @@ class TextBot:
         text = message.text
         if text == "🗂️ Доп. функции":
             print(message)
-            print(message.message)
             await self.dop_menu(message, state)
         elif text == "🔙 Назад":
             await self.mane_menu(message, state)
@@ -418,9 +417,12 @@ class TextBot:
         await state.set_state(self.PromptStates.waiting_for_content_plane_prompt)
 
     async def content_plane_generator(self, message: types.Message, state: FSMContext):
+        print(message)
         prompt = message.text
         info = self.db.get_organization_info(message.from_user.id)
+        print(info)
         result = self.ai.content_plan(prompt, info)
+        print(result)
 
         await state.clear()
         await message.answer(result.output_text, parse_mode=ParseMode.MARKDOWN_V2)

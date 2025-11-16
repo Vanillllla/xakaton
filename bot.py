@@ -45,10 +45,10 @@ class TextBot:
     )
     keyboard_param_upgrader = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=" Красиво", callback_data="up_1")],
-            [InlineKeyboardButton(text=" Другими словами", callback_data="up_2")],
-            [InlineKeyboardButton(text=" Кратко", callback_data="up_3")],
-            [InlineKeyboardButton(text=" Проще", callback_data="up_4")]
+            [InlineKeyboardButton(text="• Красиво", callback_data="up_1")],
+            [InlineKeyboardButton(text="• Другими словами", callback_data="up_2")],
+            [InlineKeyboardButton(text="• Кратко", callback_data="up_3")],
+            [InlineKeyboardButton(text="• Проще", callback_data="up_4")]
         ]
     )
     keyboard_main = ReplyKeyboardMarkup(

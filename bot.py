@@ -293,7 +293,7 @@ class TextBot:
 
         # Вставить пользовательскую функцию обработки здесь
         settings = self.db.get_user_settings(message.from_user.id)
-        info = self.db.get_organization_info(message.from_user.id)
+        info = self.db.get_organization_info(message.from_user.id)[1]
         system_prompt = self.ai.prompt_from_settings(settings) + info
         result = self.ai.prompt_with_system_context(message.text, system_prompt)
 
@@ -324,7 +324,7 @@ class TextBot:
         quests = data["quests"]
 
         if data["finish"] == 1:
-            info = self.db.get_organization_info(message.from_user.id)
+            info = self.db.get_organization_info(message.from_user.id)[1]
             resp = self.ai.dialogue(data["quest_data"], info)
             await message.answer(resp.output_text, parse_mode=ParseMode.MARKDOWN_V2)
             await state.clear()
@@ -412,7 +412,7 @@ class TextBot:
     async def content_plane_generator(self, message: types.Message, state: FSMContext):
         print(message)
         prompt = message.text
-        info = self.db.get_organization_info(message.from_user.id)
+        info = self.db.get_organization_info(message.from_user.id)[1]
         print(info)
         result = self.ai.content_plan(prompt, info)
         print(result)

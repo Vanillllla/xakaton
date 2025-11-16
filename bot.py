@@ -67,7 +67,7 @@ class TextBot:
     # )
     keyboard_main = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="📝 Разовый запрос"), KeyboardButton(text="🗂️ Доп. функции")],
+            [KeyboardButton(text="🔥 Разовый запрос"), KeyboardButton(text="🗂️ Доп. функции")],
             [KeyboardButton(text="❓ Запрос с уточнениями"), KeyboardButton(text="🛠️ Настройки генерации")],
         ],
         resize_keyboard=True,  # Подгонка под размер
@@ -76,7 +76,7 @@ class TextBot:
 
     keyboard_dop_main = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🏞️ Генерация изображения"), KeyboardButton(text="Мульти-чат")],
+            [KeyboardButton(text="🏞️ Генерация изображения"), KeyboardButton(text="📝 Улучшение текста")],
             [KeyboardButton(text="📅 Генерация контент плана"), KeyboardButton(text="🔙 Назад")],
         ],
         resize_keyboard=True,  # Подгонка под размер
@@ -105,6 +105,9 @@ class TextBot:
     class QuestState(StatesGroup):
         to_quest = State()
         to_text_answer = State()
+
+    class UpGradeState(StatesGroup):
+        to_settings = State()
 
     def __init__(self):
         """Инициализация бота и БД"""
@@ -165,6 +168,10 @@ class TextBot:
         self.dp.message.register(self.menu_handler, self.MainMenu.menu_handler)
         self.dp.message.register(self.mane_menu, self.MainMenu.mane_state)
 
+        # Обработчики для улучшения текста
+        self.dp.message.register(self.text_upgrader, self.UpGradeState.to_settings)
+        self.dp.callback_query.register(self.text_upgrader_hendler, StateFilter(self.UpGradeState.to_settings))
+
     async def mane_menu(self, message: types.Message, state: FSMContext):
         await message.answer("Главное меню :",
                              reply_markup=self.keyboard_main)
@@ -172,9 +179,6 @@ class TextBot:
 
     async def dop_menu(self, message: types.Message, state: FSMContext):
         await message.delete()
-        # if message.from_user.id in self.db.get_admins_id():
-        #     await message.answer("Дополнительное меню : ",reply_markup=self.keyboard_dop_main_a)
-        # else:
         await message.answer("Дополнительное меню : ", reply_markup=self.keyboard_dop_main)
         await state.set_state(self.MainMenu.menu_handler)
 
@@ -185,7 +189,7 @@ class TextBot:
             await self.dop_menu(message, state)
         elif text == "🔙 Назад":
             await self.mane_menu(message, state)
-        elif text == "📝 Разовый запрос":
+        elif text == "🔥 Разовый запрос":
             await state.clear()
             await self.handle_solo_quest(message, state)
         elif text == "❓ Запрос с уточнениями":
@@ -200,9 +204,21 @@ class TextBot:
         elif text == "🛠️ Настройки генерации":
             await state.clear()
             await self.settings(message, state)
+        elif text == "📝 Улучшение текста":
+            await state.clear()
+            await self.text_upgrader(message, state)
 
     async def cmd_admin(self, message: types.Message, state: FSMContext):
         """Команда для администраторов"""
+        # user = message.from_user
+        # if not self.db.user_exists(user.id):
+        #     self.db.register_user(
+        #         user_id=user.id,
+        #         username=user.username,
+        #         full_name=user.full_name,
+        #         is_admin=False
+        #     )
+
         await state.clear()
         if not self.db.is_admin(message.from_user.id):
             await message.answer("Доступ запрещен")
@@ -221,6 +237,7 @@ class TextBot:
                 text='Введите имя пользователя которого вы хотите назначить администратором системы :')
             await state.update_data(vvod=1)
             await state.set_state(self.MainMenu.rec_settings_adm)
+            return
         else:
 
             result = self.db.add_administrator(message.text[1::] if message.text[0] == "@" else message.text)
@@ -230,7 +247,9 @@ class TextBot:
                 await message.answer("Пользователь не зарегистрирован в системе")
             await state.clear()
             await self.mane_menu(message, state)
-            return
+        await state.clear()
+        await self.mane_menu(message, state)
+        return
 
     async def org_info_add(self, message: types.Message, state: FSMContext):
         data = await state.get_data()
@@ -238,22 +257,24 @@ class TextBot:
             await message.message.edit_text(text='Введите описание вашей организации :')
             await state.update_data(vvod=1)
             await state.set_state(self.MainMenu.rec_settings_org)
+            return
         else:
 
-            text = message.text
-            result = self.ai.create_system_prompt(text).output_text
-
+            result = message.text
+            # result = self.ai.create_system_prompt(result).output_text
             self.db.organization_info_reload(message.from_user.id, result)
 
             await message.answer("Данные обновлены")
-            await state.clear()
-            await self.mane_menu(message, state)
-            return
+        await state.clear()
+        await self.mane_menu(message, state)
+        return
 
     async def org_info(self, message: types.Message, state: FSMContext):
         info = self.db.get_organization_info(message.from_user.id)
 
         await message.message.answer(f"Название : \n{info[1]}\n\nОписание : \n{info[0]}")
+        await state.clear()
+        await self.mane_menu(message, state)
 
     async def cmd_help(self, message: types.Message):
         await message.answer(f"Доступные команды :\n"
@@ -278,6 +299,21 @@ class TextBot:
 
         await state.set_state(self.MainMenu.menu_handler)
 
+    async def text_upgrader(self, message: types.Message, state: FSMContext):
+        data = await state.get_data()
+        if "not_one" not in data:
+            await message.answer("Введите текст для улучшения : ")
+            await state.update_data(not_one=1)
+            await state.set_state(self.UpGradeState.to_settings)
+        else:
+            await message.answer("Введите текст для улучшения : ")
+
+    async def text_upgrader_hendler(self, callback: CallbackQuery, state: FSMContext):
+        data = await state.get_data()
+        if callback.data == "":
+
+
+
     async def handle_solo_quest(self, message: types.Message, state: FSMContext):
         """Обработчик кнопки 'Одиночный запрос'"""
         await state.clear()
@@ -298,7 +334,7 @@ class TextBot:
         result = self.ai.prompt_with_system_context(message.text + "Используй хештэги только из описания организации и указанные выше", system_prompt)
 
         await state.clear()
-        await message.answer(result.output_text, parse_mode=ParseMode.MARKDOWN_V2)
+        await message.answer(result.output_text)
         await self.mane_menu(message, state)
         return
 
@@ -326,7 +362,7 @@ class TextBot:
         if data["finish"] == 1:
             info = self.db.get_organization_info(message.from_user.id)[1]
             resp = self.ai.dialogue(data["quest_data"], info)
-            await message.answer(resp.output_text, parse_mode=ParseMode.MARKDOWN_V2)
+            await message.answer(resp.output_text)
             await state.clear()
             await self.mane_menu(message, state)
             return
@@ -418,7 +454,7 @@ class TextBot:
         print(result)
 
         await state.clear()
-        await message.answer(result.output_text, parse_mode=ParseMode.MARKDOWN_V2)
+        await message.answer(result.output_text)
         await self.mane_menu(message, state)
         return
 

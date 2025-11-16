@@ -253,7 +253,7 @@ class TextBot:
     async def org_info(self, message: types.Message, state: FSMContext):
         info = self.db.get_organization_info(message.from_user.id)
 
-        await message.message.answer(f"**Название : **\n{info[1]}\n\n**Описание : **\n{info[0]}", parse_mode=ParseMode.MARKDOWN_V2)
+        await message.message.answer(f"Название : \n{info[1]}\n\nОписание : \n{info[0]}")
 
     async def cmd_help(self, message: types.Message):
         await message.answer(f"Доступные команды :\n"
@@ -527,9 +527,3 @@ if __name__ == "__main__":
     asyncio.run(main())
 
 
-'''
-Егру:
-- Заставь гопоту если он использует жирный, курсив и т. п. пусть юзает ParseMode.MARKDOWN_V2
-- 237 строка тоже для тебя
-- 
-'''

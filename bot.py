@@ -185,7 +185,7 @@ class TextBot:
             await self.dop_menu(message, state)
         elif text == "🔙 Назад":
             await self.mane_menu(message, state)
-        elif text == "📝 Одиночный запрос":
+        elif text == "📝 Разовый запрос":
             await state.clear()
             await self.handle_solo_quest(message, state)
         elif text == "❓ Запрос с уточнениями":
@@ -431,6 +431,7 @@ class TextBot:
             await state.update_data(settings_list=settings_list)
             await state.update_data(settings=self.db.get_user_settings(message.from_user.id))
             await message.answer("Настройки генерации:", reply_markup=self.keyboard_settings_mane)
+            await state.update_data(state="main")
 
 
         else:
@@ -442,32 +443,44 @@ class TextBot:
     async def settings_handler(self, callback: CallbackQuery, state: FSMContext):
         data = await state.get_data()
         await callback.answer()
-        if callback.data == "stile":
+
+        if callback.data == "stile" or data["state"] == "to_stile":
             keyboard_stile_gen = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text=f"{value}"+(" 🟢"if str(key) == str(data["settings"]["set_style_type"]) else ""), callback_data=f"stile_select_{key}")] for key, value in data["settings_list"]["style_type"].items()
-            ] + [[InlineKeyboardButton(text="🔙 Назад", callback_data="back")]])
+            ] + [[InlineKeyboardButton(text="💾 Сохранить", callback_data="save")], [InlineKeyboardButton(text="🔙 Назад", callback_data="back")]])
+            await state.update_data(state="main")
             await callback.message.edit_text(text="Выберите стиль написания текста:", reply_markup=keyboard_stile_gen)
-        elif callback.data == "tone":
+        elif callback.data == "tone" or data["state"] == "to_tone":
             keyboard_stile_gen = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text=f"{value}"+(" 🟢"if str(key) == str(data["settings"]["set_tone"]) else ""), callback_data=f"tone_select_{key}")] for key, value in data["settings_list"]["tone"].items()
-            ] + [[InlineKeyboardButton(text="🔙 Назад", callback_data="back")]])
+            ] + [ [InlineKeyboardButton(text="💾 Сохранить", callback_data="save")],[InlineKeyboardButton(text="🔙 Назад", callback_data="back")]])
             await callback.message.edit_text(text="Выберите тон текста:", reply_markup=keyboard_stile_gen)
-        elif callback.data == "size":
+            await state.update_data(state="main")
+        elif callback.data == "size" or data["state"] == "to_size":
             keyboard_stile_gen = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text=f"{value}"+(" 🟢"if str(key) == str(data["settings"]["set_size"]) else ""), callback_data=f"size_select_{key}")] for key, value in data["settings_list"]["size"].items()
-            ] + [[InlineKeyboardButton(text="🔙 Назад", callback_data="back")]])
+            ] + [[InlineKeyboardButton(text="💾 Сохранить", callback_data="save")], [InlineKeyboardButton(text="🔙 Назад", callback_data="back")]])
             await callback.message.edit_text(text="Выберите примерный размер текста:", reply_markup=keyboard_stile_gen)
+            await state.update_data(state="main")
+
         elif "size_select_" in callback.data:
-            key = callback.data[12::]
-            data["settings"]["size"] = key
-            await state.update_data(settings=key)
-
-
+            key = callback.data[len(callback.data)-1::]
+            data["settings"]["set_size"] = key
+            await state.update_data(settings=data["settings"])
+            await state.update_data(state="to_size")
+            await self.settings_handler(callback, state)
         elif "tone_select_" in callback.data:
-            pass
-
+            key = callback.data[len(callback.data)-1::]
+            data["settings"]["set_tone"] = key
+            await state.update_data(settings=data["settings"])
+            await state.update_data(state="to_tone")
+            await self.settings_handler(callback, state)
         elif "stile_select_" in callback.data:
-            pass
+            key = callback.data[len(callback.data) - 1::]
+            data["settings"]["set_style_type"] = key
+            await state.update_data(settings=data["settings"])
+            await state.update_data(state="to_stile")
+            await self.settings_handler(callback , state)
 
         elif callback.data == "to_menu":
             await self.bot.delete_message(chat_id=callback.from_user.id, message_id=callback.message.message_id)
@@ -475,7 +488,11 @@ class TextBot:
             await self.mane_menu(callback.message, state)
         elif callback.data == "back":
             await self.settings(callback.message, state)
-
+        elif callback.data == "save":
+            data = await state.get_data()
+            self.db.set_user_settings(callback.from_user.id, data["settings"])
+            await self.settings(callback.message, state)
+        return
 
 
 

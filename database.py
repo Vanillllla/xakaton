@@ -121,3 +121,22 @@ class Database:
                                 WHERE user_id = %s)""",(user_id,))
             result = cursor.fetchone()
             return result
+
+    def set_user_settings(self, user_id: int, settings: dict):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                               UPDATE users
+                               SET set_org_info   = %s,
+                                   set_style_type = %s,
+                                   set_size       = %s,
+                                   set_tone       = %s
+                               WHERE user_id = %s
+                               """, (settings['set_org_info'], settings['set_style_type'], settings['set_size'],
+                                     settings['set_tone'], user_id))
+                conn.commit()
+                return cursor.rowcount > 0  # Возвращает True если обновление прошло успешно
+        except Exception as e:
+            print(f"Ошибка при обновлении настроек пользователя {user_id}: {e}")
+            return False

@@ -47,24 +47,14 @@ class TextBot:
             [InlineKeyboardButton(text="🏠 В меню", callback_data="to_menu")]
         ]
     )
-    # keyboard_settings_tone = InlineKeyboardMarkup(
-    #     inline_keyboard=[
-    #         [InlineKeyboardButton(text="Внести информацию от организации", callback_data="input_org_info")],
-    #         [InlineKeyboardButton(text=".", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")]
-    #     ]
-    # )
-    # keyboard_settings_size = InlineKeyboardMarkup(
-    #     inline_keyboard=[
-    #         [InlineKeyboardButton(text="Внести информацию от организации", callback_data="input_org_info")],
-    #         [InlineKeyboardButton(text=".", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")]
-    #     ]
-    # )
-
-    # keyboard_yes_no = InlineKeyboardMarkup(
-    #     inline_keyboard=[
-    #         [InlineKeyboardButton(text="Да", callback_data="yes_pic"), InlineKeyboardButton(text="Нет", callback_data="no_pic")],
-    #     ]
-    # )
+    keyboard_param_upgrader = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=" Красиво", callback_data="up_1")],
+            [InlineKeyboardButton(text=" Другими словами", callback_data="up_2")],
+            [InlineKeyboardButton(text=" Кратко", callback_data="up_3")],
+            [InlineKeyboardButton(text=" Проще", callback_data="up_4")]
+        ]
+    )
     keyboard_main = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🔥 Разовый запрос"), KeyboardButton(text="🗂️ Доп. функции")],
@@ -73,7 +63,6 @@ class TextBot:
         resize_keyboard=True,  # Подгонка под размер
         one_time_keyboard=True  # Скрыть после нажатия
     )
-
     keyboard_dop_main = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🏞️ Генерация изображения"), KeyboardButton(text="📝 Улучшение текста")],
@@ -185,7 +174,6 @@ class TextBot:
     async def menu_handler(self, message: types.Message, state: FSMContext):
         text = message.text
         if text == "🗂️ Доп. функции":
-            print(message)
             await self.dop_menu(message, state)
         elif text == "🔙 Назад":
             await self.mane_menu(message, state)
@@ -301,17 +289,83 @@ class TextBot:
 
     async def text_upgrader(self, message: types.Message, state: FSMContext):
         data = await state.get_data()
-        if "not_one" not in data:
+        if "state" not in data:
             await message.answer("Введите текст для улучшения : ")
-            await state.update_data(not_one=1)
+            await state.update_data(state="main_to_params")
             await state.set_state(self.UpGradeState.to_settings)
-        else:
-            await message.answer("Введите текст для улучшения : ")
+
+
+        elif data["state"] == "main_to_params":
+            await state.update_data(text=message.text)
+            await state.update_data(state="buttons")
+            await message.answer("Выберите нужное улучшение :", reply_markup=self.keyboard_param_upgrader)
+        elif data["state"] == "again_quest":
+            await state.update_data(state="buttons")
+
+            self.keyboard_param_upgrader.inline_keyboard = self.keyboard_param_upgrader.inline_keyboard + [[InlineKeyboardButton(text="✏️ Изменить текст", callback_data="edit")],[InlineKeyboardButton(text="✅ Завершить", callback_data="stop")]]
+            print(self.keyboard_param_upgrader.inline_keyboard )
+            await message.answer("Нужно ли ещё улучшить текст ?", reply_markup=self.keyboard_param_upgrader)
+
 
     async def text_upgrader_hendler(self, callback: CallbackQuery, state: FSMContext):
         data = await state.get_data()
-        if callback.data == "":
-            pass
+        await callback.answer()
+        text = data["text"]
+
+
+        if callback.data == "up_1":
+            await callback.message.edit_text("Делаю текст красивше )) : ")
+
+            """
+            text + up_1/2/... --> улучшение --> result
+            """
+            result = "красивый текст"
+
+            await callback.message.answer(result)
+            await state.update_data(text=result)
+            await state.update_data(state="again_quest")
+            await self.text_upgrader(callback.message, state)
+        elif callback.data == "up_2":
+            await callback.message.edit_text("Делаю текст lheubvb ckjdfvb )) : ")
+
+            """
+            text + up_1/2/... --> улучшение --> result
+            """
+            result = "Другими словами текст"
+
+            await callback.message.answer(result)
+            await state.update_data(text=result)
+            await state.update_data(state="again_quest")
+            await self.text_upgrader(callback.message, state)
+        elif callback.data == "up_3":
+            await callback.message.edit_text("Делаю текст короче : ")
+
+            """
+            text + up_1/2/... --> улучшение --> result
+            """
+            result = "Кратко текст"
+
+            await callback.message.answer(result)
+            await state.update_data(text=result)
+            await state.update_data(state="again_quest")
+            await self.text_upgrader(callback.message, state)
+        elif callback.data == "up_4":
+            await callback.message.edit_text("Делаю текст проще : ")
+
+            """
+            text + up_1/2/... --> улучшение --> result
+            """
+            result = "Проще текст"
+
+            await callback.message.answer(result)
+            await state.update_data(text=result)
+            await state.update_data(state="again_quest")
+            await self.text_upgrader(callback.message, state)
+
+        elif callback.data == "stop":
+            await state.clear()
+            await callback.message.delete()
+            await self.mane_menu(callback.message, state)
 
 
 

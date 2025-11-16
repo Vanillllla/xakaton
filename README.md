@@ -11,7 +11,7 @@ TG-bot
 > Если у вас еще нет каталога, создайте его.
 
 Для запуска требуется добавить .env файл со следующим содержимым:
-'''
+```
 BOT_TOKEN=BOT_TOKEN
 DB_HOST=IP
 DB_USER=USERNAME
@@ -21,5 +21,4 @@ API_KEY=YANDEX_CLOUD_API
 CLOUD_FOLDER=FOLDER_WITH_SERVICE_ACCOUNT
 
 MODEL=MODEL_NAME
-
-'''
+```

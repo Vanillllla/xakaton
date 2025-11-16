@@ -97,3 +97,27 @@ class Database:
                                 WHERE user_id = %s)
                             """,(new_info, user_id))
             conn.commit()
+
+    def add_administrator(self, username: str):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                            UPDATE users
+                            SET is_admin = %s 
+                            WHERE username = %s
+                            """, (True, username))
+            conn.commit()
+        return True
+
+    def get_organization_info(self, user_id: int):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                            SELECT organization_info_data, organization_name
+                            FROM organizations
+                            WHERE id = (
+                                SELECT organization
+                                FROM users
+                                WHERE user_id = %s)""",(user_id,))
+            result = cursor.fetchone()
+            return result

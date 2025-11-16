@@ -3,10 +3,12 @@ import json
 import os
 import pathlib
 from doctest import master
+from idlelib.pyshell import extended_linecache_checkcache
 from math import pi
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher, types, F
+from aiogram.enums import ParseMode
 from aiogram.filters import Command, StateFilter, callback_data
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
@@ -25,29 +27,33 @@ class TextBot:
         inline_keyboard=[
             [InlineKeyboardButton(text="⬅️", callback_data="back"),
              InlineKeyboardButton(text="➡️", callback_data="next")],
-            [InlineKeyboardButton(text="🏠В меню", callback_data="menu"),
+            [InlineKeyboardButton(text="🏠 В меню", callback_data="menu"),
              InlineKeyboardButton(text="✅ Завершить", callback_data="finish")],
         ]
     )
     keyboard_admin = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Внести информацию от организации", callback_data="input_org_info")],
-            [InlineKeyboardButton(text="Добавить администраторов", callback_data="add_admin")],
-            [InlineKeyboardButton(text=".", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")]
+            [InlineKeyboardButton(text="Внести информацию от организации", callback_data="input_org_info"),
+             InlineKeyboardButton(text="Показать информацию о вашей организации", callback_data="get_org_info")],
+            [InlineKeyboardButton(text="Добавить администраторов", callback_data="add_admin")]
         ]
     )
-    # keyboard_settings_mane = InlineKeyboardMarkup(
-    #     inline_keyboard=[
-    #         [InlineKeyboardButton(text="Внести информацию от организации", callback_data="input_org_info")],
-    #         [InlineKeyboardButton(text=".", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")]
-    #     ]
-    # )
-    # keyboard_settings_stile = InlineKeyboardMarkup(
-    #     inline_keyboard=[
-    #         [InlineKeyboardButton(text="Внести информацию от организации", callback_data="input_org_info")],
-    #         [InlineKeyboardButton(text=".", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")]
-    #     ]
-    # )
+    keyboard_settings_mane = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="ℹ️ Информация об организации", callback_data="org_info_use")],
+            [InlineKeyboardButton(text="🎨 Стиль", callback_data="stile")],
+            [InlineKeyboardButton(text="🗣️ Тон", callback_data="tone")],
+            [InlineKeyboardButton(text="📐 Размер", callback_data="size")],
+            [InlineKeyboardButton(text="🏠 В меню", callback_data="to_menu")]
+        ]
+    )
+    keyboard_settings_stile = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="стили", callback_data="111111")],
+            [InlineKeyboardButton(text=".", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")],
+            [InlineKeyboardButton(text=".", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")],
+        ]
+    )
     # keyboard_settings_tone = InlineKeyboardMarkup(
     #     inline_keyboard=[
     #         [InlineKeyboardButton(text="Внести информацию от организации", callback_data="input_org_info")],
@@ -98,6 +104,10 @@ class TextBot:
         adm_settings = State()
         rec_settings_org = State()
         rec_settings_info = State()
+        rec_settings_adm = State()
+
+    class SettingsMenu(StatesGroup):
+        settings_menu = State()
 
     class QuestState(StatesGroup):
         to_quest = State()
@@ -149,7 +159,15 @@ class TextBot:
         self.dp.callback_query.register(self.org_info_add, F.data == "input_org_info",
                                         StateFilter(self.MainMenu.adm_settings))
         self.dp.callback_query.register(self.adm_add, F.data == "add_admin", StateFilter(self.MainMenu.adm_settings))
+        self.dp.callback_query.register(self.org_info, F.data == "get_org_info",
+                                        StateFilter(self.MainMenu.adm_settings))
+
+        # Обработчики для настроек генерации
+        self.dp.callback_query.register(self.settings_handler,
+                                        StateFilter(self.SettingsMenu.settings_menu))
+
         self.dp.message.register(self.org_info_add, self.MainMenu.rec_settings_org)
+        self.dp.message.register(self.adm_add, self.MainMenu.rec_settings_adm)
 
         self.dp.message.register(self.menu_handler, self.MainMenu.menu_handler)
         self.dp.message.register(self.mane_menu, self.MainMenu.mane_state)
@@ -170,6 +188,8 @@ class TextBot:
     async def menu_handler(self, message: types.Message, state: FSMContext):
         text = message.text
         if text == "🗂️ Доп. функции":
+            print(message)
+            print(message.message)
             await self.dop_menu(message, state)
         elif text == "🔙 Назад":
             await self.mane_menu(message, state)
@@ -185,6 +205,9 @@ class TextBot:
         elif text == "📅 Генерация контент плана":
             await state.clear()
             await self.content_plane_promt_listen(message, state)
+        elif text == "🛠️ Настройки генерации":
+            await state.clear()
+            await self.settings(message, state)
 
     async def cmd_admin(self, message: types.Message, state: FSMContext):
         """Команда для администраторов"""
@@ -200,14 +223,27 @@ class TextBot:
         return
 
     async def adm_add(self, message: types.Message, state: FSMContext):
-        pass
+        data = await state.get_data()
+        if "vvod" not in data:
+            await message.message.edit_text(
+                text='Введите имя пользователя которого вы хотите назначить администратором системы :')
+            await state.update_data(vvod=1)
+            await state.set_state(self.MainMenu.rec_settings_adm)
+        else:
+
+            result = self.db.add_administrator(message.text[1::] if message.text[0] == "@" else message.text)
+            if result:
+                await message.answer("Администратор добавлен")
+            else:
+                await message.answer("Пользователь не зарегистрирован в системе")
+            await state.clear()
+            await self.mane_menu(message, state)
+            return
 
     async def org_info_add(self, message: types.Message, state: FSMContext):
         data = await state.get_data()
         if "vvod" not in data:
-            # .(text='Введите описание')
             await message.message.edit_text(text='Введите описание вашей организации :')
-            # await message.answer("Напишите описние вашей органзации ...."+ ":")
             await state.update_data(vvod=1)
             await state.set_state(self.MainMenu.rec_settings_org)
         else:
@@ -224,6 +260,11 @@ class TextBot:
             await state.clear()
             await self.mane_menu(message, state)
             return
+
+    async def org_info(self, message: types.Message, state: FSMContext):
+        info = self.db.get_organization_info(message.from_user.id)
+
+        await message.message.answer(f"**Название : **\n{info[1]}\n\n**Описание : **\n{info[0]}", parse_mode=ParseMode.MARKDOWN_V2)
 
     async def cmd_help(self, message: types.Message):
         await message.answer(f"Доступные команды :\n"
@@ -267,7 +308,7 @@ class TextBot:
         result = self.ai.prompt_with_system_context(message.text, system_prompt)
 
         await state.clear()
-        await message.answer(result.output_text)
+        await message.answer(result.output_text, parse_mode=ParseMode.MARKDOWN_V2)
         await self.mane_menu(message, state)
         return
 
@@ -294,7 +335,7 @@ class TextBot:
 
         if data["finish"] == 1:
             resp = self.ai.dialogue(data["quest_data"])
-            await message.answer(resp.output_text)
+            await message.answer(resp.output_text, parse_mode=ParseMode.MARKDOWN_V2)
             await state.clear()
             await self.mane_menu(message, state)
             return
@@ -382,15 +423,51 @@ class TextBot:
         result = self.ai.content_plan(prompt)
 
         await state.clear()
-        await message.answer(result.output_text)
+        await message.answer(result.output_text, parse_mode=ParseMode.MARKDOWN_V2)
         await self.mane_menu(message, state)
         return
 
-    async def handle_settings(self, message: types.Message, state: FSMContext):
+    async def settings(self, message: types.Message, state: FSMContext):
         """Обработчик кнопки 'Настройки'"""
-        await message.answer("Открыты настройки", reply_markup=self.keyboard_settings)
-        # Здесь ваша логика для настроек
-        # Например, показать клавиатуру с настройками
+        if "not_first" not in await state.get_data():
+            await state.update_data(not_first=1)
+            with open('settings.json', 'r', encoding='utf-8') as file:
+                settings_list = json.load(file)["settings"]
+            await state.update_data(settings_list=settings_list)
+            await state.update_data(settings=self.db.get_user_settings(message.from_user.id))
+            await message.answer("Настройки генерации:", reply_markup=self.keyboard_settings_mane)
+
+        else:
+            await message.answer("Настройки генерации:", reply_markup=self.keyboard_settings_mane)
+        await state.set_state(self.SettingsMenu.settings_menu)
+        return
+
+    async def settings_handler(self, callback: CallbackQuery, state: FSMContext):
+        data = await state.get_data()
+        await callback.answer()
+        if callback.data == "stile":
+            keyboard_stile_gen = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text=f"{value}", callback_data=f"stile_selekt_{key}")] for key, value in data["settings_list"]["style_type"].items()
+            ])
+            await callback.message.edit_text(text="Выберите стиль написания текста:", reply_markup=keyboard_stile_gen)
+        elif callback.data == "tone":
+            keyboard_stile_gen = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text=f"{value}", callback_data=f"stile_selekt_{key}")] for key, value in data["settings_list"]["style_type"].items()
+            ])
+            await callback.message.edit_text(text="Выберите стиль написания текста:", reply_markup=keyboard_stile_gen)
+        if callback.data == "size":
+            keyboard_stile_gen = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text=f"{value}", callback_data=f"stile_selekt_{key}")] for key, value in data["settings_list"]["style_type"].items()
+            ])
+            await callback.message.edit_text(text="Выберите стиль написания текста:", reply_markup=keyboard_stile_gen)
+
+
+        elif callback.data == "back":
+            pass
+
+    # [InlineKeyboardButton(text="🔙 Назад", callback_data="back")]
+
+
 
     async def notify_admins_on_startup(self):
         """Уведомить администраторов о запуске бота"""
@@ -421,3 +498,11 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+'''
+Егру:
+- Заставь гопоту если он использует жирный, курсив и т. п. пусть юзает ParseMode.MARKDOWN_V2
+- 237 строка тоже для тебя
+- 
+'''

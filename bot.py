@@ -3,7 +3,6 @@ import json
 import os
 import pathlib
 
-
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -11,6 +10,7 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from dotenv import load_dotenv
+from yandex.cloud.searchapi.v2.img_search_service_pb2_grpc import ImageSearchService
 
 from database import Database
 from link_ai import LinkAI
@@ -391,7 +391,7 @@ class TextBot:
         settings = self.db.get_user_settings(message.from_user.id)
         info = self.db.get_organization_info(message.from_user.id)[1]
         system_prompt = info + "Используй при создании постов хештэги."
-        result = self.ai.prompt_from_settings(settings) + self.ai.prompt_with_system_context(message.text + "Используй хештэги только из описания организации и указанные выше", system_prompt)
+        result = self.ai.prompt_with_system_context(self.ai.prompt_from_settings(settings) + message.text + "Используй хештэги только из описания организации и указанные выше", system_prompt)
 
         await state.clear()
         await message.answer(result.output_text)
@@ -453,7 +453,13 @@ class TextBot:
             await state.update_data(quest=data["quest"] - 1)
         elif callback.data == "finish":
             await self.bot.delete_message(chat_id=callback.from_user.id, message_id=callback.message.message_id)
-            await state.update_data(finish=1)
+            info = self.db.get_organization_info(callback.from_user.id)[1]
+            resp = self.ai.dialogue(data["quest_data"], info)
+            await callback.message.answer(resp.output_text)
+            await state.clear()
+            await self.main_menu(callback.message, state)
+            return
+
         elif callback.data == "menu":
             await self.bot.delete_message(chat_id=callback.from_user.id, message_id=callback.message.message_id)
             await state.clear()
@@ -461,6 +467,7 @@ class TextBot:
             return None
 
         await self.handle_question_quest(callback.message, state)
+        return None
 
     async def handle_quest_text(self, message: types.Message, state: FSMContext):
         data = await state.get_data()
@@ -495,9 +502,9 @@ class TextBot:
             pass
         await state.clear()
         await message.answer_photo(FSInputFile(result))
-        await message.answer("Создать изображение по новой?")
-        # await self.mane_menu(message, state)
-        return
+        # await message.answer("Создать изображение по новой?")
+        await self.main_menu(message, state)
+
 
     async def content_plane_promt_listen(self, message: types.Message, state: FSMContext):
         await message.answer(
@@ -572,6 +579,18 @@ class TextBot:
             await state.update_data(settings=data["settings"])
             await state.update_data(state="to_stile")
             await self.settings_handler(callback , state)
+
+        elif callback.data == "org_info_use":
+            # print(data["settings"]) #{'set_org_info': 1, 'set_style_type': 4, 'set_size': 1, 'set_tone': 3}
+            if str(data["settings"]["set_org_info"]) == "1":
+                data["settings"]["set_org_info"] = 0
+                await callback.answer("🔴 ВЫКЛЮЧЕН учёт информации о вашей организации")
+            elif str(data["settings"]["set_org_info"]) == "0":
+                data["settings"]["set_org_info"] = 1
+                await callback.answer("🟢 ВКЛЮЧЁН учёт информации о вашей организации")
+            await state.update_data(settings=data["settings"])
+            self.db.set_user_settings(callback.from_user.id, data["settings"])
+            await self.settings(callback.message, state)
 
         elif callback.data == "to_menu":
             await self.bot.delete_message(chat_id=callback.from_user.id, message_id=callback.message.message_id)

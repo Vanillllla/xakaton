@@ -47,13 +47,6 @@ class TextBot:
             [InlineKeyboardButton(text="🏠 В меню", callback_data="to_menu")]
         ]
     )
-    keyboard_settings_stile = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="стили", callback_data="111111")],
-            [InlineKeyboardButton(text=".", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")],
-            [InlineKeyboardButton(text=".", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")],
-        ]
-    )
     # keyboard_settings_tone = InlineKeyboardMarkup(
     #     inline_keyboard=[
     #         [InlineKeyboardButton(text="Внести информацию от организации", callback_data="input_org_info")],
@@ -439,11 +432,10 @@ class TextBot:
             await state.update_data(settings=self.db.get_user_settings(message.from_user.id))
             await message.answer("Настройки генерации:", reply_markup=self.keyboard_settings_mane)
 
+
         else:
-            try:
-                await message.message.edit_text("Настройки генерации:", reply_markup=self.keyboard_settings_mane)
-            except:
-                await message.edit_text("Настройки генерации:", reply_markup=self.keyboard_settings_mane)
+            await message.edit_text("Настройки генерации:", reply_markup=self.keyboard_settings_mane)
+            # print(await state.get_data()) {'not_first': 1, 'settings_list': {'style_type': {'1': 'Разговорный', '2': 'Официально-деловой', '3': 'Художественный', '4': 'Технический'}, 'size': {'1': '100 Слов', '2': '250 Слов', '3': '500 Слов'}, 'tone': {'1': 'Нейтральный', '2': 'Дружелюбный', '3': 'Профессиональный'}}, 'settings': {'set_org_info': 0, 'set_style_type': 2, 'set_size': 2, 'set_tone': 1}}
         await state.set_state(self.SettingsMenu.settings_menu)
         return
 
@@ -452,24 +444,37 @@ class TextBot:
         await callback.answer()
         if callback.data == "stile":
             keyboard_stile_gen = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text=f"{value}", callback_data=f"stile_selekt_{key}")] for key, value in data["settings_list"]["style_type"].items()
+                [InlineKeyboardButton(text=f"{value}"+(" 🟢"if str(key) == str(data["settings"]["set_style_type"]) else ""), callback_data=f"stile_select_{key}")] for key, value in data["settings_list"]["style_type"].items()
             ] + [[InlineKeyboardButton(text="🔙 Назад", callback_data="back")]])
             await callback.message.edit_text(text="Выберите стиль написания текста:", reply_markup=keyboard_stile_gen)
         elif callback.data == "tone":
             keyboard_stile_gen = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text=f"{value}", callback_data=f"stile_selekt_{key}")] for key, value in data["settings_list"]["tone"].items()
+                [InlineKeyboardButton(text=f"{value}"+(" 🟢"if str(key) == str(data["settings"]["set_tone"]) else ""), callback_data=f"tone_select_{key}")] for key, value in data["settings_list"]["tone"].items()
             ] + [[InlineKeyboardButton(text="🔙 Назад", callback_data="back")]])
-            await callback.message.edit_text(text="Выберите стиль написания текста:", reply_markup=keyboard_stile_gen)
-        if callback.data == "size":
+            await callback.message.edit_text(text="Выберите тон текста:", reply_markup=keyboard_stile_gen)
+        elif callback.data == "size":
             keyboard_stile_gen = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text=f"{value}", callback_data=f"stile_selekt_{key}")] for key, value in data["settings_list"]["size"].items()
+                [InlineKeyboardButton(text=f"{value}"+(" 🟢"if str(key) == str(data["settings"]["set_size"]) else ""), callback_data=f"size_select_{key}")] for key, value in data["settings_list"]["size"].items()
             ] + [[InlineKeyboardButton(text="🔙 Назад", callback_data="back")]])
-            await callback.message.edit_text(text="Выберите стиль написания текста:", reply_markup=keyboard_stile_gen)
+            await callback.message.edit_text(text="Выберите примерный размер текста:", reply_markup=keyboard_stile_gen)
+        elif "size_select_" in callback.data:
+            key = callback.data[12::]
+            data["settings"]["size"] = key
+            await state.update_data(settings=key)
 
 
+        elif "tone_select_" in callback.data:
+            pass
 
+        elif "stile_select_" in callback.data:
+            pass
+
+        elif callback.data == "to_menu":
+            await self.bot.delete_message(chat_id=callback.from_user.id, message_id=callback.message.message_id)
+            await state.clear()
+            await self.mane_menu(callback.message, state)
         elif callback.data == "back":
-            await self.settings(callback, state)
+            await self.settings(callback.message, state)
 
 
 

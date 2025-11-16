@@ -2,14 +2,10 @@ import asyncio
 import json
 import os
 import pathlib
-from doctest import master
-from idlelib.pyshell import extended_linecache_checkcache
-from math import pi
-from pathlib import Path
+
 
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.enums import ParseMode
-from aiogram.filters import Command, StateFilter, callback_data
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile
@@ -292,18 +288,23 @@ class TextBot:
         if "state" not in data:
             await message.answer("Введите текст для улучшения : ")
             await state.update_data(state="main_to_params")
+            await state.update_data(kyebord=0)
             await state.set_state(self.UpGradeState.to_settings)
 
 
         elif data["state"] == "main_to_params":
             await state.update_data(text=message.text)
             await state.update_data(state="buttons")
+            if data["kyebord"] == 1:
+                await state.update_data(kyebord=0)
+                self.keyboard_param_upgrader.inline_keyboard = self.keyboard_param_upgrader.inline_keyboard[:-2:]
             await message.answer("Выберите нужное улучшение :", reply_markup=self.keyboard_param_upgrader)
+            await state.set_state(self.UpGradeState.to_settings)
         elif data["state"] == "again_quest":
             await state.update_data(state="buttons")
-
-            self.keyboard_param_upgrader.inline_keyboard = self.keyboard_param_upgrader.inline_keyboard + [[InlineKeyboardButton(text="✏️ Изменить текст", callback_data="edit")],[InlineKeyboardButton(text="✅ Завершить", callback_data="stop")]]
-            print(self.keyboard_param_upgrader.inline_keyboard )
+            if data["kyebord"] == 0:
+                self.keyboard_param_upgrader.inline_keyboard = self.keyboard_param_upgrader.inline_keyboard + [[InlineKeyboardButton(text="✏️ Изменить текст", callback_data="edit")],[InlineKeyboardButton(text="✅ Завершить", callback_data="stop")]]
+                await state.update_data(kyebord=1)
             await message.answer("Нужно ли ещё улучшить текст ?", reply_markup=self.keyboard_param_upgrader)
 
 
@@ -366,6 +367,10 @@ class TextBot:
             await state.clear()
             await callback.message.delete()
             await self.mane_menu(callback.message, state)
+        elif callback.data == "edit":
+            await callback.message.edit_text("Введите измелённый текст :")
+            await state.update_data(state="main_to_params")
+            await state.set_state(self.UpGradeState.to_settings)
 
 
 
@@ -441,7 +446,6 @@ class TextBot:
 
     async def handle_quest_callback(self, callback: CallbackQuery, state: FSMContext):
         data = await state.get_data()
-        print("button pressed")
         await callback.answer()
         if callback.data == "next":
             await state.update_data(quest=data["quest"] + 1)
@@ -501,12 +505,9 @@ class TextBot:
         await state.set_state(self.PromptStates.waiting_for_content_plane_prompt)
 
     async def content_plane_generator(self, message: types.Message, state: FSMContext):
-        print(message)
         prompt = message.text
         info = self.db.get_organization_info(message.from_user.id)[1]
-        print(info)
         result = self.ai.content_plan(prompt, info)
-        print(result)
 
         await state.clear()
         await message.answer(result.output_text)
@@ -527,7 +528,6 @@ class TextBot:
 
         else:
             await message.edit_text("Настройки генерации:", reply_markup=self.keyboard_settings_mane)
-            # print(await state.get_data()) {'not_first': 1, 'settings_list': {'style_type': {'1': 'Разговорный', '2': 'Официально-деловой', '3': 'Художественный', '4': 'Технический'}, 'size': {'1': '100 Слов', '2': '250 Слов', '3': '500 Слов'}, 'tone': {'1': 'Нейтральный', '2': 'Дружелюбный', '3': 'Профессиональный'}}, 'settings': {'set_org_info': 0, 'set_style_type': 2, 'set_size': 2, 'set_tone': 1}}
         await state.set_state(self.SettingsMenu.settings_menu)
         return
 
@@ -584,8 +584,6 @@ class TextBot:
             self.db.set_user_settings(callback.from_user.id, data["settings"])
             await self.settings(callback.message, state)
         return
-
-
 
     async def notify_admins_on_startup(self):
         """Уведомить администраторов о запуске бота"""
